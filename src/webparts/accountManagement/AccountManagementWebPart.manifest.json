@@ -1,0 +1,29 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "762df7fa-0fd0-4019-b227-d184ab4abc67",
+  "alias": "AccountManagementWebPart",
+  "componentType": "WebPart",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": ["SharePointWebPart", "TeamsPersonalApp", "TeamsTab", "SharePointFullPage"],
+  "supportsThemeVariants": true,
+  "preconfiguredEntries": [
+    {
+      "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
+      "group": { "default": "Advanced" },
+      "title": { "default": "365 Account Management" },
+      "description": { "default": "Manage Microsoft 365 account and group membership requests" },
+      "officeFabricIconFontName": "Group",
+      "properties": {
+        "description": "365 Account Management",
+        "requestListTitle": "Group Membership Audit Test",
+        "groupListTitle": "Group Management Test Data",
+        "authorizedAdminsListTitle": "Group Management Authorized Admins",
+        "visibleOffices": "",
+        "pollTimeoutSeconds": 120,
+        "verboseLogging": false
+      }
+    }
+  ]
+}

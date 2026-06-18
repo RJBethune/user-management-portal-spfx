@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "account-management-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/accountManagement/AccountManagementWebPart.js",
+          "manifest": "./src/webparts/accountManagement/AccountManagementWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "AccountManagementWebPartStrings": "lib/webparts/accountManagement/loc/{locale}.js"
+  }
+}

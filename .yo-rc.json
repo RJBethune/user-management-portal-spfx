@@ -1,0 +1,21 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.14.0",
+    "sdksVersions": {
+      "@microsoft/microsoft-graph-client": "3.0.2",
+      "@microsoft/teams-js": "2.24.0"
+    },
+    "version": "1.21.1",
+    "libraryName": "user-management-portal-spfx",
+    "libraryId": "ee656af9-b263-4758-b163-a56663bc6cbd",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "365 Account Management",
+    "solutionShortDescription": "Manage Microsoft 365 account and group membership requests",
+    "skipFeatureDeployment": false,
+    "isDomainIsolated": false,
+    "componentType": "webpart"
+  }
+}
