@@ -1,4 +1,4 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/write-manifests.schema.json",
-  "cdnBasePath": "https://YOUR-CDN-BASE-PATH/user-management-portal-spfx/"
+  "cdnBasePath": "https://irm.azureedge.us/M/user-management-portal-spfx/"
 }

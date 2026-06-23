@@ -17,11 +17,16 @@
       "officeFabricIconFontName": "Group",
       "properties": {
         "description": "365 Account Management",
+        "introText": "",
+        "helpText": "",
+        "helpUrl": "",
         "requestListTitle": "Group Membership Audit Test",
         "groupListTitle": "Group Management Test Data",
         "authorizedAdminsListTitle": "Group Management Authorized Admins",
         "visibleOffices": "",
         "pollTimeoutSeconds": 120,
+        "startCollapsed": true,
+        "requireJustification": false,
         "verboseLogging": false
       }
     }

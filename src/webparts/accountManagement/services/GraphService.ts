@@ -10,6 +10,10 @@ import { toMessage } from '../shared/errors';
 
 const DIAG: string = '365 Account Management diagnostic';
 
+/** Locale-aware A→Z by display name (used for member and owner lists, NOT search results). */
+const byDisplayName = (a: IUser, b: IUser): number =>
+  (a.displayName || '').localeCompare(b.displayName || '', undefined, { sensitivity: 'base' });
+
 export class GraphService {
   private _context: WebPartContext;
 
@@ -40,7 +44,7 @@ export class GraphService {
         path = page['@odata.nextLink'];
       }
       diag(`${DIAG} Graph group members loaded`, { groupId, count: collected.length });
-      return collected.map(this._mapUser).filter((u: IUser) => !!u.displayName);
+      return collected.map(this._mapUser).filter((u: IUser) => !!u.displayName).sort(byDisplayName);
     } catch (err) {
       throw new Error('Unable to load group members. ' + toMessage(err, 'Microsoft Graph request failed.'));
     }
@@ -71,7 +75,8 @@ export class GraphService {
         mail: u.Email,
         userPrincipalName: u.UserPrincipalName || u.LoginName
       }))
-      .filter((u: IUser) => !!u.displayName);
+      .filter((u: IUser) => !!u.displayName)
+      .sort(byDisplayName);
   }
 
   /** Directory search (tenant-wide; works in DEV and PROD regardless of group type). */
@@ -113,7 +118,10 @@ export class GraphService {
           `?$select=id,displayName,mail,userPrincipalName,jobTitle&$top=100`
       )
       .get();
-    return (((result && result.value) || []) as any[]).map(this._mapUser).filter((u: IUser) => !!u.displayName);
+    return (((result && result.value) || []) as any[])
+      .map(this._mapUser)
+      .filter((u: IUser) => !!u.displayName)
+      .sort(byDisplayName);
   }
 
   private _mapUser(raw: any): IUser {

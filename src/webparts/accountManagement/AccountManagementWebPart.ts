@@ -8,7 +8,7 @@ import {
   PropertyPaneToggle
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
-import { MessageBar, MessageBarType } from '@fluentui/react';
+import { FluentProvider, MessageBar, MessageBarBody, webLightTheme } from '@fluentui/react-components';
 
 import * as strings from 'AccountManagementWebPartStrings';
 import AccountManagement from './components/AccountManagement';
@@ -18,11 +18,16 @@ import { setVerbose } from './shared/log';
 
 export interface IAccountManagementWebPartProps {
   description: string;
+  introText: string;
+  helpText: string;
+  helpUrl: string;
   requestListTitle: string;
   groupListTitle: string;
   authorizedAdminsListTitle: string;
   visibleOffices: string;
   pollTimeoutSeconds: number;
+  startCollapsed: boolean;
+  requireJustification: boolean;
   verboseLogging: boolean;
 }
 
@@ -50,14 +55,18 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 
   public render(): React.ReactNode {
     if (this.state.errorMessage) {
-      return React.createElement(MessageBar, { messageBarType: MessageBarType.error }, this.state.errorMessage);
+      return React.createElement(
+        FluentProvider,
+        { theme: webLightTheme, style: { background: 'transparent' } },
+        React.createElement(MessageBar, { intent: 'error' }, React.createElement(MessageBarBody, {}, this.state.errorMessage))
+      );
     }
     return this.props.children;
   }
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.0.7';
+  public static readonly buildVersion: string = '1.0.9';
 
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
   private _unhandledRejectionHandler: ((e: PromiseRejectionEvent) => void) | undefined;
@@ -94,7 +103,12 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
           buildVersion: AccountManagementWebPart.buildVersion,
           listConfig: listConfig,
           visibleOffices: this.properties.visibleOffices || '',
-          pollTimeoutMs: seconds * 1000
+          pollTimeoutMs: seconds * 1000,
+          introText: this.properties.introText || '',
+          helpText: this.properties.helpText || '',
+          helpUrl: this.properties.helpUrl || '',
+          startCollapsed: !!this.properties.startCollapsed,
+          requireJustification: !!this.properties.requireJustification
         })
       );
       ReactDom.render(element, this.domElement);
@@ -120,7 +134,23 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
           groups: [
             {
               groupName: 'Display',
-              groupFields: [PropertyPaneTextField('description', { label: 'Title' })]
+              groupFields: [
+                PropertyPaneTextField('description', { label: 'Title' }),
+                PropertyPaneTextField('introText', {
+                  label: 'Intro / help text',
+                  description: 'Shown under the heading. Blank = the default line. Tailor it per team/page.',
+                  multiline: true,
+                  rows: 3
+                }),
+                PropertyPaneTextField('helpText', {
+                  label: 'Support line text',
+                  description: 'e.g. "Questions? Contact the IT Service Desk." Blank = hidden.'
+                }),
+                PropertyPaneTextField('helpUrl', {
+                  label: 'Support link URL (optional)',
+                  description: 'If set, the support line becomes a link (e.g. a mailto: or ticket URL).'
+                })
+              ]
             },
             {
               groupName: 'Offices on this page',
@@ -155,6 +185,16 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
                   max: 600,
                   step: 10,
                   value: 120
+                }),
+                PropertyPaneToggle('startCollapsed', {
+                  label: 'Start office cards collapsed',
+                  onText: 'Collapsed',
+                  offText: 'First office expanded'
+                }),
+                PropertyPaneToggle('requireJustification', {
+                  label: 'Require a reason for each change',
+                  onText: 'Required',
+                  offText: 'Optional'
                 }),
                 PropertyPaneToggle('verboseLogging', {
                   label: 'Verbose diagnostic logging (browser console)',

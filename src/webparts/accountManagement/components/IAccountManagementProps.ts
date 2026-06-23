@@ -10,4 +10,13 @@ export interface IAccountManagementProps {
   /** Comma-separated office names or Group IDs to show on this page; blank = all authorized. */
   visibleOffices: string;
   pollTimeoutMs: number;
+  /** Optional per-page intro/help text shown under the heading (blank = default line). */
+  introText: string;
+  /** Optional "need help?" line; helpUrl makes helpText a link. */
+  helpText: string;
+  helpUrl: string;
+  /** Start every group card collapsed (no auto-expand of the first office). */
+  startCollapsed: boolean;
+  /** Require a justification note before Add/Remove (captured into the request item). */
+  requireJustification: boolean;
 }

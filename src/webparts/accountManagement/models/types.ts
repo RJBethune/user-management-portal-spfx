@@ -51,6 +51,7 @@ export interface IMembershipChangeInput {
   action: MembershipAction;
   group: IOfficeGroup;
   member: IUser;
+  justification?: string;
 }
 
 export interface ICurrentUser {

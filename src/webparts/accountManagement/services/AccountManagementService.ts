@@ -119,13 +119,59 @@ export class AccountManagementService {
       CorrelationId: Guid.newGuid().toString(),
       OfficeGroupRecordId: input.group.id
     };
+    if (input.justification && input.justification.trim()) {
+      payload.Justification = input.justification.trim();
+    }
     payload.MemberEntraIdId = await this._ensureUserId(input.member.userPrincipalName || input.member.mail);
 
-    const created: any = await this._post(
-      `${this._webUrl}/_api/web/lists/getbytitle('${this._config.requestListTitle}')/items`,
-      payload
-    );
-    return this._mapRequest(created);
+    return this._mapRequest(await this._postRequestItem(payload));
+  }
+
+  /**
+   * Audit record for a SharePoint-group change that was applied directly (no flow).
+   * Written as Completed so the flow skips it (not Pending); best-effort so it never blocks the change.
+   */
+  public async recordCompletedChange(input: IMembershipChangeInput): Promise<void> {
+    try {
+      const now: string = new Date().toISOString();
+      const payload: any = {
+        Title: `${input.action}: ${input.member.displayName}`,
+        Action: input.action,
+        GroupId: input.group.groupId,
+        GroupName: input.group.title,
+        MemberId: input.member.id,
+        MemberDisplayName: input.member.displayName,
+        Status: 'Completed',
+        ResultMessage: 'Applied directly to the SharePoint group.',
+        RequestedOn: now,
+        TargetUserPrincipalName: input.member.userPrincipalName || input.member.mail || '',
+        TargetUserEmail: input.member.mail || input.member.userPrincipalName || '',
+        CorrelationId: Guid.newGuid().toString(),
+        OfficeGroupRecordId: input.group.id
+      };
+      if (input.justification && input.justification.trim()) {
+        payload.Justification = input.justification.trim();
+      }
+      await this._postRequestItem(payload);
+    } catch (e) {
+      console.warn('365 Account Management: could not write the SharePoint-change audit record.', e);
+    }
+  }
+
+  /** POST a request-list item; if the list has no Justification column yet, retry without it. */
+  private async _postRequestItem(payload: any): Promise<any> {
+    const url: string = `${this._webUrl}/_api/web/lists/getbytitle('${this._config.requestListTitle}')/items`;
+    try {
+      return await this._post(url, payload);
+    } catch (e) {
+      if (payload && Object.prototype.hasOwnProperty.call(payload, 'Justification')) {
+        const fallback: any = { ...payload };
+        delete fallback.Justification;
+        console.warn('365 Account Management: request list has no Justification column; submitting without it.');
+        return this._post(url, fallback);
+      }
+      throw e;
+    }
   }
 
   /**

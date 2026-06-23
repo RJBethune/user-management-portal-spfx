@@ -1,6 +1,6 @@
 {
   "name": "user-management-portal-spfx",
-  "version": "1.0.7",
+  "version": "1.1.0",
   "private": true,
   "description": "365 Account Management — manage Microsoft 365 account and group membership requests.",
   "engines": {
@@ -23,6 +23,8 @@
     "@microsoft/sp-webpart-base": "1.21.1",
     "@microsoft/sp-loader": "1.21.1",
     "@fluentui/react": "8.106.4",
+    "@fluentui/react-components": "9.74.1",
+    "@fluentui/react-icons": "2.0.330",
     "@pnp/spfx-controls-react": "3.21.0",
     "react": "17.0.1",
     "react-dom": "17.0.1",
@@ -34,12 +36,12 @@
     "@microsoft/rush-stack-compiler-5.3": "0.1.0",
     "@microsoft/sp-build-web": "1.21.1",
     "@microsoft/sp-module-interfaces": "1.21.1",
-    "@rushstack/eslint-config": "4.0.1",
+    "@rushstack/eslint-config": "4.3.0",
     "@types/react": "17.0.45",
     "@types/react-dom": "17.0.17",
-    "@types/webpack-env": "~1.15.2",
-    "ajv": "^6.12.5",
-    "eslint": "8.57.0",
+    "@types/webpack-env": "1.18.8",
+    "ajv": "6.15.0",
+    "eslint": "8.57.1",
     "eslint-plugin-react-hooks": "4.6.2",
     "gulp": "4.0.2",
     "typescript": "5.3.3"

@@ -1,16 +1,27 @@
 import * as React from 'react';
 import {
+  FluentProvider,
   Spinner,
-  SpinnerSize,
   MessageBar,
-  MessageBarType,
+  MessageBarBody,
+  MessageBarActions,
   SearchBox,
-  PrimaryButton,
-  DefaultButton,
-  IconButton,
-  Icon
-} from '@fluentui/react';
+  Field,
+  Textarea,
+  Link,
+  Button
+} from '@fluentui/react-components';
+import {
+  People20Regular,
+  ChevronUp20Regular,
+  ChevronDown20Regular,
+  PersonAdd20Regular,
+  ArrowSync20Regular,
+  SubtractCircle20Regular,
+  Dismiss20Regular
+} from '@fluentui/react-icons';
 import { LivePersona } from '@pnp/spfx-controls-react/lib/LivePersona';
+import { buildFluentTheme } from './theme';
 import styles from './AccountManagement.module.scss';
 import { IAccountManagementProps } from './IAccountManagementProps';
 import { GraphService } from '../services/GraphService';
@@ -21,8 +32,11 @@ import { getManageability, IManageability } from '../shared/manageability';
 import { friendlyError, isTimeout, requestResultText } from '../shared/errors';
 import { diag } from '../shared/log';
 
+/** Fluent v9 MessageBar intent (replaces Fluent v8 MessageBarType). */
+type AlertIntent = 'success' | 'error' | 'warning' | 'info';
+
 interface IAlert {
-  type: MessageBarType;
+  type: AlertIntent;
   text: string;
 }
 
@@ -30,12 +44,15 @@ interface ICardState {
   membersLoading?: boolean;
   memberError?: string;
   members?: IUser[];
+  memberFilter?: string;
+  justification?: string;
   ownersLoading?: boolean;
   ownersError?: string;
   owners?: IUser[];
   directoryQuery?: string;
   directoryLoading?: boolean;
   directoryResults?: IUser[];
+  directoryCapped?: boolean;
   selectedUser?: IUser;
   processing?: boolean;
   processingMessage?: string;
@@ -47,6 +64,13 @@ const ACTION_LABEL: { [key: string]: string } = {
   'Add Member': 'Add member',
   'Remove Member': 'Remove'
 };
+
+// Directory-search tuning (large-tenant friendly).
+const MIN_SEARCH_CHARS: number = 3;
+const SEARCH_DEBOUNCE_MS: number = 400;
+const SEARCH_RESULT_CAP: number = 25;
+// Show the member filter box only once a group is big enough to warrant it.
+const MEMBER_FILTER_THRESHOLD: number = 5;
 
 function initials(name: string): string {
   return (
@@ -92,6 +116,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const [cards, setCards] = React.useState<{ [id: number]: ICardState }>({});
   const [recent, setRecent] = React.useState<IRequestSummary[]>([]);
 
+  // Fluent v9 theme (maps the SharePoint section theme onto v9 brand tokens).
+  const theme = React.useMemo(() => buildFluentTheme(), []);
+
   const currentUserKey: string = (props.context.pageContext.user.email || '').toLowerCase();
 
   const updateCard = (id: number, patch: ICardState): void => {
@@ -133,7 +160,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           });
           setAuthorizedCount(loaded.length);
           setGroups(scoped);
-          setSelectedGroupId(scoped[0] ? scoped[0].id : undefined);
+          setSelectedGroupId(props.startCollapsed ? undefined : scoped[0] ? scoped[0].id : undefined);
           loadRecent().catch(() => undefined);
         }
       } catch (err) {
@@ -213,13 +240,17 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           !seen.has((u.userPrincipalName || '').toLowerCase()) &&
           !seen.has((u.mail || '').toLowerCase())
       );
-      updateCard(group.id, { directoryResults: filtered, directoryLoading: false });
+      updateCard(group.id, {
+        directoryResults: filtered,
+        directoryCapped: results.length >= SEARCH_RESULT_CAP,
+        directoryLoading: false
+      });
     } catch (err) {
       console.error('365 Account Management failed to search users.', { error: err });
       updateCard(group.id, {
         directoryResults: [],
         directoryLoading: false,
-        alert: { type: MessageBarType.error, text: friendlyError(err) }
+        alert: { type: 'error', text: friendlyError(err) }
       });
     }
   };
@@ -230,8 +261,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     if (searchTimers.current[group.id] !== undefined) {
       window.clearTimeout(searchTimers.current[group.id]);
     }
-    if (term.length < 2) {
-      updateCard(group.id, { directoryResults: [], directoryLoading: false });
+    if (term.length < MIN_SEARCH_CHARS) {
+      updateCard(group.id, { directoryResults: [], directoryCapped: false, directoryLoading: false });
       return;
     }
     updateCard(group.id, { directoryLoading: true });
@@ -239,13 +270,18 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       runDirectorySearch(group, term).catch((err: unknown) =>
         updateCard(group.id, {
           directoryLoading: false,
-          alert: { type: MessageBarType.error, text: friendlyError(err) }
+          alert: { type: 'error', text: friendlyError(err) }
         })
       );
-    }, 350);
+    }, SEARCH_DEBOUNCE_MS);
   };
 
-  const submit = async (group: IOfficeGroup, action: MembershipAction, member: IUser): Promise<void> => {
+  const submit = async (
+    group: IOfficeGroup,
+    action: MembershipAction,
+    member: IUser,
+    justification?: string
+  ): Promise<void> => {
     updateCard(group.id, {
       processing: true,
       processingMessage: `Submitting ${ACTION_LABEL[action].toLowerCase()} request...`,
@@ -256,16 +292,20 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       if (isSharePointGroup(group.groupId)) {
         updateCard(group.id, { processingMessage: 'Updating SharePoint group...' });
         await spService.current.changeSharePointGroupMembership({ action, spGroupId: group.groupId, member });
+        // Write a who/why audit record for the direct SP change (best-effort; the flow skips it).
+        await spService.current.recordCompletedChange({ action, group, member, justification });
         updateCard(group.id, {
           processing: false,
           processingMessage: undefined,
           selectedUser: undefined,
           directoryQuery: '',
           directoryResults: [],
-          alert: { type: MessageBarType.success, text: 'Membership updated.' }
+          justification: undefined,
+          alert: { type: 'success', text: 'Membership updated.' }
         });
+        loadRecent().catch(() => undefined);
       } else {
-        const created = await spService.current.createMembershipRequest({ action, group, member });
+        const created = await spService.current.createMembershipRequest({ action, group, member, justification });
         updateCard(group.id, { processingMessage: 'Waiting for Power Automate to finish...' });
         const result = await spService.current.pollRequest(
           created.id,
@@ -279,8 +319,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           selectedUser: undefined,
           directoryQuery: '',
           directoryResults: [],
+          justification: undefined,
           alert: {
-            type: ok ? MessageBarType.success : MessageBarType.error,
+            type: ok ? 'success' : 'error',
             text: requestResultText(result.resultMessage, result.authorizationResult, ok)
           }
         });
@@ -294,7 +335,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           processingMessage: undefined,
           selectedUser: undefined,
           alert: {
-            type: MessageBarType.warning,
+            type: 'warning',
             text: 'Your request was submitted and is still processing. Refresh the members in a minute to confirm.'
           }
         });
@@ -304,7 +345,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         updateCard(group.id, {
           processing: false,
           processingMessage: undefined,
-          alert: { type: MessageBarType.error, text: friendlyError(err) }
+          alert: { type: 'error', text: friendlyError(err) }
         });
       }
     } finally {
@@ -329,10 +370,12 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
   if (loading) {
     return (
-      <section className={styles.accountManagement}>
-        {versionBadge}
-        <Spinner label="Loading group access..." size={SpinnerSize.medium} />
-      </section>
+      <FluentProvider theme={theme} style={{ background: 'transparent' }}>
+        <section className={styles.accountManagement}>
+          {versionBadge}
+          <Spinner label="Loading group access..." size="medium" />
+        </section>
+      </FluentProvider>
     );
   }
 
@@ -341,14 +384,18 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     diag('365 Account Management diagnostic no authorized groups; web part hidden');
     const scopedOut: boolean = authorizedCount > 0;
     return (
-      <section className={styles.accountManagement}>
-        {versionBadge}
-        <MessageBar messageBarType={MessageBarType.info}>
-          {scopedOut
-            ? 'None of the offices you are authorized to manage are configured to show on this page. Check the web part’s “Offices to show” setting.'
-            : 'You are not currently authorized to manage any offices here. If you expect access, contact your administrator.'}
-        </MessageBar>
-      </section>
+      <FluentProvider theme={theme} style={{ background: 'transparent' }}>
+        <section className={styles.accountManagement}>
+          {versionBadge}
+          <MessageBar intent="info">
+            <MessageBarBody>
+              {scopedOut
+                ? 'None of the offices you are authorized to manage are configured to show on this page. Check the web part’s “Offices to show” setting.'
+                : 'You are not currently authorized to manage any offices here. If you expect access, contact your administrator.'}
+            </MessageBarBody>
+          </MessageBar>
+        </section>
+      </FluentProvider>
     );
   }
 
@@ -363,264 +410,345 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   });
 
   return (
-    <section className={styles.accountManagement}>
-      {versionBadge}
-      <div className={styles.header}>
-        <h2>365 Account Management</h2>
-        <p>Add or remove Microsoft 365 group members for groups you are authorized to manage.</p>
-      </div>
+    <FluentProvider theme={theme} style={{ background: 'transparent' }}>
+      <section className={styles.accountManagement}>
+        {versionBadge}
+        <div className={styles.header}>
+          <h2>365 Account Management</h2>
+          <p>{props.introText || 'Add or remove Microsoft 365 group members for groups you are authorized to manage.'}</p>
+          {props.helpText && (
+            <p className={styles.helpLine}>
+              {props.helpUrl ? (
+                <Link href={props.helpUrl} target="_blank">
+                  {props.helpText}
+                </Link>
+              ) : (
+                props.helpText
+              )}
+            </p>
+          )}
+        </div>
 
-      {topError && <MessageBar messageBarType={MessageBarType.error}>{topError}</MessageBar>}
+        {topError && (
+          <MessageBar intent="error">
+            <MessageBarBody>{topError}</MessageBarBody>
+          </MessageBar>
+        )}
 
-      {!topError && (
-        <>
-          <div className={styles.toolbar}>
-            <SearchBox
-              placeholder="Search groups"
-              value={groupSearch}
-              onChange={(_: unknown, v?: string) => setGroupSearch(v || '')}
-              className={styles.search}
-              ariaLabel="Search the offices you manage"
-            />
-          </div>
+        {!topError && (
+          <>
+            <div className={styles.toolbar}>
+              <SearchBox
+                placeholder="Search groups"
+                value={groupSearch}
+                onChange={(_, data) => setGroupSearch(data.value || '')}
+                className={styles.search}
+                aria-label="Search the offices you manage"
+              />
+            </div>
 
-          <div className={styles.grid}>
-            {filtered.map((group: IOfficeGroup) => {
-              const card: ICardState = cards[group.id] || {};
-              const expanded: boolean = selectedGroupId === group.id;
-              const manage: IManageability = getManageability(group);
-              const recentForGroup: IRequestSummary[] = recent.filter(
-                (r: IRequestSummary) => (r.groupId || '').toLowerCase() === (group.groupId || '').toLowerCase()
-              );
-              return (
-                <article className={styles.groupCard} key={group.id}>
-                  <button
-                    className={styles.groupHeader}
-                    type="button"
-                    onClick={() => setSelectedGroupId(expanded ? undefined : group.id)}
-                    aria-expanded={expanded}
-                  >
-                    <span className={styles.groupIcon} aria-hidden="true">
-                      <Icon iconName="Group" />
-                    </span>
-                    <span className={styles.groupTitleBlock}>
-                      <span className={styles.groupTitle}>{group.title}</span>
-                      <span className={styles.groupMeta}>{group.mail || group.siteTitle || group.groupId}</span>
-                    </span>
-                    <Icon iconName={expanded ? 'ChevronUp' : 'ChevronDown'} className={styles.chevron} />
-                  </button>
-
-                  {expanded && (
-                    <div className={styles.groupBody}>
-                      <div className={styles.metaRow}>
-                        {group.visibility && <span>{group.visibility}</span>}
-                        {group.isTeamsConnected && <span>Teams connected</span>}
-                        {group.siteTitle && <span>{group.siteTitle}</span>}
-                      </div>
-
-                      {!manage.manageable && (
-                        <MessageBar messageBarType={MessageBarType.warning}>{manage.reason}</MessageBar>
+            <div className={styles.grid}>
+              {filtered.map((group: IOfficeGroup) => {
+                const card: ICardState = cards[group.id] || {};
+                const expanded: boolean = selectedGroupId === group.id;
+                const manage: IManageability = getManageability(group);
+                const recentForGroup: IRequestSummary[] = recent.filter(
+                  (r: IRequestSummary) => (r.groupId || '').toLowerCase() === (group.groupId || '').toLowerCase()
+                );
+                const memberFilterText: string = (card.memberFilter || '').trim().toLowerCase();
+                const visibleMembers: IUser[] = (card.members || []).filter(
+                  (m: IUser) =>
+                    !memberFilterText ||
+                    (m.displayName || '').toLowerCase().indexOf(memberFilterText) !== -1 ||
+                    (m.mail || '').toLowerCase().indexOf(memberFilterText) !== -1 ||
+                    (m.userPrincipalName || '').toLowerCase().indexOf(memberFilterText) !== -1 ||
+                    (m.jobTitle || '').toLowerCase().indexOf(memberFilterText) !== -1
+                );
+                const justificationMissing: boolean =
+                  props.requireJustification && !(card.justification || '').trim();
+                return (
+                  <article className={styles.groupCard} key={group.id}>
+                    <button
+                      className={styles.groupHeader}
+                      type="button"
+                      onClick={() => setSelectedGroupId(expanded ? undefined : group.id)}
+                      aria-expanded={expanded}
+                    >
+                      <span className={styles.groupIcon} aria-hidden="true">
+                        <People20Regular />
+                      </span>
+                      <span className={styles.groupTitleBlock}>
+                        <span className={styles.groupTitle}>{group.title}</span>
+                        <span className={styles.groupMeta}>{group.mail || group.siteTitle || group.groupId}</span>
+                      </span>
+                      {expanded ? (
+                        <ChevronUp20Regular className={styles.chevron} />
+                      ) : (
+                        <ChevronDown20Regular className={styles.chevron} />
                       )}
+                    </button>
 
-                      {card.alert && (
-                        <MessageBar
-                          messageBarType={card.alert.type}
-                          onDismiss={() => updateCard(group.id, { alert: undefined })}
-                        >
-                          {card.alert.text}
-                        </MessageBar>
-                      )}
-
-                      {card.confirmRemove && (
-                        <MessageBar
-                          messageBarType={MessageBarType.warning}
-                          actions={
-                            <div>
-                              <PrimaryButton
-                                text="Remove"
-                                onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser)}
-                              />
-                              <DefaultButton text="Cancel" onClick={() => updateCard(group.id, { confirmRemove: undefined })} />
-                            </div>
-                          }
-                        >
-                          Remove <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
-                          {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() === currentUserKey
-                            ? ' This is your own access.'
-                            : ''}
-                          {(card.members ? card.members.length : 0) === 1 ? ' This is the last member of the group.' : ''}
-                        </MessageBar>
-                      )}
-
-                      {card.processing && (
-                        <div className={styles.processing} aria-live="polite">
-                          <Spinner size={SpinnerSize.small} />
-                          <span>{card.processingMessage}</span>
+                    {expanded && (
+                      <div className={styles.groupBody}>
+                        <div className={styles.metaRow}>
+                          {group.visibility && <span>{group.visibility}</span>}
+                          {group.isTeamsConnected && <span>Teams connected</span>}
+                          {group.siteTitle && <span>{group.siteTitle}</span>}
                         </div>
-                      )}
 
-                      {manage.manageable && (
-                        <div className={styles.addArea}>
-                          <SearchBox
-                            placeholder="Search directory to add a member"
-                            value={card.directoryQuery || ''}
-                            ariaLabel={`Search the directory to add a member to ${group.title}`}
-                            onChange={(_: unknown, v?: string) => onDirectoryChange(group, v || '')}
-                            disabled={card.processing}
-                          />
-                          {card.directoryLoading && <Spinner size={SpinnerSize.small} label="Searching..." />}
-                          {!!(card.directoryResults && card.directoryResults.length) && (
-                            <div className={styles.directoryResults} role="listbox" aria-label="Directory results">
-                              {card.directoryResults.map((u: IUser) => (
-                                <button
-                                  key={u.id}
-                                  type="button"
-                                  role="option"
-                                  aria-selected={!!(card.selectedUser && card.selectedUser.id === u.id)}
-                                  className={`${styles.personRow} ${
-                                    card.selectedUser && card.selectedUser.id === u.id ? styles.personRowSelected : ''
-                                  }`}
-                                  onClick={() => updateCard(group.id, { selectedUser: u })}
-                                >
-                                  <span className={styles.avatar}>{initials(u.displayName)}</span>
-                                  <span className={styles.memberDetails}>
-                                    <strong>{u.displayName}</strong>
-                                    <span>{u.jobTitle || u.mail || u.userPrincipalName}</span>
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {card.selectedUser && (
-                            <div className={styles.selectedUser}>
-                              <span>
-                                Add <strong>{card.selectedUser.displayName}</strong>
-                              </span>
-                              <PrimaryButton
-                                text="Submit"
-                                iconProps={{ iconName: 'AddFriend' }}
-                                disabled={card.processing}
-                                onClick={() => submit(group, 'Add Member', card.selectedUser as IUser)}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        {props.requireJustification && manage.manageable && (
+                          <Field label="Reason for this change" required>
+                            <Textarea
+                              rows={2}
+                              value={card.justification || ''}
+                              placeholder="Why are you making this change? (recorded with the request)"
+                              disabled={card.processing}
+                              onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
+                            />
+                          </Field>
+                        )}
 
-                      {!isSharePointGroup(group.groupId) && manage.manageable && (card.owners || card.ownersLoading || card.ownersError) && (
-                        <div className={styles.subSection}>
-                          <h3>Owners</h3>
-                          {card.ownersLoading && <Spinner size={SpinnerSize.small} label="Loading owners..." />}
-                          {card.ownersError && <span className={styles.emptyText}>Owners couldn’t be loaded.</span>}
-                          {!card.ownersLoading && !card.ownersError && (
-                            <div className={styles.memberList}>
-                              {(card.owners || []).map((o: IUser) => (
-                                <div className={styles.memberRow} key={`own-${o.id}`}>
-                                  <div className={styles.personaWrap}>
-                                    {renderPersona(
-                                      o,
-                                      <span className={styles.persona}>
-                                        <span className={styles.avatar}>{initials(o.displayName)}</span>
-                                        <span className={styles.memberDetails}>
-                                          <strong>{o.displayName}</strong>
-                                          <span>{o.jobTitle || o.mail || o.userPrincipalName}</span>
-                                        </span>
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                              {(card.owners ? card.owners.length : 0) === 0 && (
-                                <p className={styles.emptyText}>No owners returned.</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        {!manage.manageable && (
+                          <MessageBar intent="warning">
+                            <MessageBarBody>{manage.reason}</MessageBarBody>
+                          </MessageBar>
+                        )}
 
-                      <div className={styles.membersHeader}>
-                        <h3>Current members</h3>
-                        <IconButton
-                          iconProps={{ iconName: 'Refresh' }}
-                          title="Refresh members"
-                          ariaLabel="Refresh members"
-                          disabled={card.processing || card.membersLoading}
-                          onClick={() => {
-                            loadMembers(group).catch(() => undefined);
-                          }}
-                        />
-                      </div>
+                        {card.alert && (
+                          <MessageBar intent={card.alert.type}>
+                            <MessageBarBody>{card.alert.text}</MessageBarBody>
+                            <MessageBarActions
+                              containerAction={
+                                <Button
+                                  appearance="transparent"
+                                  aria-label="Dismiss"
+                                  icon={<Dismiss20Regular />}
+                                  onClick={() => updateCard(group.id, { alert: undefined })}
+                                />
+                              }
+                            />
+                          </MessageBar>
+                        )}
 
-                      {card.memberError && <MessageBar messageBarType={MessageBarType.error}>{card.memberError}</MessageBar>}
-                      {card.membersLoading && <Spinner label="Loading members..." size={SpinnerSize.small} />}
+                        {card.confirmRemove && (
+                          <MessageBar intent="warning">
+                            <MessageBarBody>
+                              Remove <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
+                              {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() === currentUserKey
+                                ? ' This is your own access.'
+                                : ''}
+                              {(card.members ? card.members.length : 0) === 1 ? ' This is the last member of the group.' : ''}
+                            </MessageBarBody>
+                            <MessageBarActions>
+                              <Button
+                                appearance="primary"
+                                disabled={justificationMissing}
+                                onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
+                              >
+                                Remove
+                              </Button>
+                              <Button onClick={() => updateCard(group.id, { confirmRemove: undefined })}>Cancel</Button>
+                            </MessageBarActions>
+                          </MessageBar>
+                        )}
 
-                      {!card.membersLoading && !card.memberError && (
-                        <div className={styles.memberList}>
-                          {(card.members || []).map((m: IUser) => (
-                            <div className={styles.memberRow} key={m.id}>
-                              <div className={styles.personaWrap}>
-                                {renderPersona(
-                                  m,
-                                  <span className={styles.persona}>
-                                    <span className={styles.avatar}>{initials(m.displayName)}</span>
+                        {card.processing && (
+                          <div className={styles.processing} aria-live="polite">
+                            <Spinner size="small" />
+                            <span>{card.processingMessage}</span>
+                          </div>
+                        )}
+
+                        {manage.manageable && (
+                          <div className={styles.addArea}>
+                            <SearchBox
+                              placeholder="Search directory to add a member (type 3+ letters)"
+                              value={card.directoryQuery || ''}
+                              aria-label={`Search the directory to add a member to ${group.title}`}
+                              onChange={(_, data) => onDirectoryChange(group, data.value || '')}
+                              disabled={card.processing}
+                            />
+                            {card.directoryLoading && <Spinner size="small" label="Searching..." />}
+                            {card.directoryCapped && !card.directoryLoading && (
+                              <p className={styles.emptyText}>Showing the first 25 matches — keep typing to narrow.</p>
+                            )}
+                            {!!(card.directoryResults && card.directoryResults.length) && (
+                              <div className={styles.directoryResults} role="listbox" aria-label="Directory results">
+                                {card.directoryResults.map((u: IUser) => (
+                                  <button
+                                    key={u.id}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={!!(card.selectedUser && card.selectedUser.id === u.id)}
+                                    className={`${styles.personRow} ${
+                                      card.selectedUser && card.selectedUser.id === u.id ? styles.personRowSelected : ''
+                                    }`}
+                                    onClick={() => updateCard(group.id, { selectedUser: u })}
+                                  >
+                                    <span className={styles.avatar}>{initials(u.displayName)}</span>
                                     <span className={styles.memberDetails}>
-                                      <strong>{m.displayName}</strong>
-                                      <span>{m.jobTitle || m.mail || m.userPrincipalName}</span>
+                                      <strong>{u.displayName}</strong>
+                                      <span>{u.jobTitle || u.mail || u.userPrincipalName}</span>
                                     </span>
-                                  </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {card.selectedUser && (
+                              <div className={styles.selectedUser}>
+                                <span>
+                                  Add <strong>{card.selectedUser.displayName}</strong>
+                                </span>
+                                <Button
+                                  appearance="primary"
+                                  icon={<PersonAdd20Regular />}
+                                  disabled={card.processing || justificationMissing}
+                                  onClick={() => submit(group, 'Add Member', card.selectedUser as IUser, card.justification)}
+                                >
+                                  Submit
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {!isSharePointGroup(group.groupId) && manage.manageable && (card.owners || card.ownersLoading || card.ownersError) && (
+                          <div className={styles.subSection}>
+                            <h3>Owners</h3>
+                            {card.ownersLoading && <Spinner size="small" label="Loading owners..." />}
+                            {card.ownersError && <span className={styles.emptyText}>Owners couldn’t be loaded.</span>}
+                            {!card.ownersLoading && !card.ownersError && (
+                              <div className={styles.memberList}>
+                                {(card.owners || []).map((o: IUser) => (
+                                  <div className={styles.memberRow} key={`own-${o.id}`}>
+                                    <div className={styles.personaWrap}>
+                                      {renderPersona(
+                                        o,
+                                        <span className={styles.persona}>
+                                          <span className={styles.avatar}>{initials(o.displayName)}</span>
+                                          <span className={styles.memberDetails}>
+                                            <strong>{o.displayName}</strong>
+                                            <span>{o.jobTitle || o.mail || o.userPrincipalName}</span>
+                                          </span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                                {(card.owners ? card.owners.length : 0) === 0 && (
+                                  <p className={styles.emptyText}>No owners returned.</p>
                                 )}
                               </div>
-                              {manage.manageable && (
-                                <DefaultButton
-                                  text="Remove"
-                                  iconProps={{ iconName: 'RemoveFromShoppingList' }}
-                                  disabled={card.processing}
-                                  onClick={() => updateCard(group.id, { confirmRemove: m })}
-                                />
-                              )}
-                            </div>
-                          ))}
-                          {(card.members ? card.members.length : 0) === 0 && (
-                            <p className={styles.emptyText}>No members were returned for this group.</p>
-                          )}
-                        </div>
-                      )}
+                            )}
+                          </div>
+                        )}
 
-                      {recentForGroup.length > 0 && (
-                        <div className={styles.subSection}>
-                          <h3>Your recent requests</h3>
-                          <div className={styles.recentList}>
-                            {recentForGroup.map((r: IRequestSummary) => (
-                              <div className={styles.recentRow} key={`req-${r.id}`}>
-                                <span
-                                  className={`${styles.statusPill} ${
-                                    r.status === 'Completed'
-                                      ? styles.statusCompleted
-                                      : r.status === 'Failed'
-                                      ? styles.statusFailed
-                                      : styles.statusPending
-                                  }`}
-                                >
-                                  {r.status}
-                                </span>
-                                <span className={styles.memberDetails}>
-                                  <strong>{r.action}: {r.memberDisplayName}</strong>
-                                  <span>{r.resultMessage || r.requestedOn || ''}</span>
-                                </span>
+                        <div className={styles.membersHeader}>
+                          <h3>Current members</h3>
+                          <Button
+                            appearance="transparent"
+                            icon={<ArrowSync20Regular />}
+                            title="Refresh members"
+                            aria-label="Refresh members"
+                            disabled={card.processing || card.membersLoading}
+                            onClick={() => {
+                              loadMembers(group).catch(() => undefined);
+                            }}
+                          />
+                        </div>
+
+                        {!card.membersLoading &&
+                          !card.memberError &&
+                          (card.members ? card.members.length : 0) > MEMBER_FILTER_THRESHOLD && (
+                            <SearchBox
+                              placeholder="Filter members"
+                              value={card.memberFilter || ''}
+                              aria-label={`Filter the members of ${group.title}`}
+                              onChange={(_, data) => updateCard(group.id, { memberFilter: data.value || '' })}
+                              className={styles.search}
+                            />
+                          )}
+
+                        {card.memberError && (
+                          <MessageBar intent="error">
+                            <MessageBarBody>{card.memberError}</MessageBarBody>
+                          </MessageBar>
+                        )}
+                        {card.membersLoading && <Spinner label="Loading members..." size="small" />}
+
+                        {!card.membersLoading && !card.memberError && (
+                          <div className={styles.memberList}>
+                            {visibleMembers.map((m: IUser) => (
+                              <div className={styles.memberRow} key={m.id}>
+                                <div className={styles.personaWrap}>
+                                  {renderPersona(
+                                    m,
+                                    <span className={styles.persona}>
+                                      <span className={styles.avatar}>{initials(m.displayName)}</span>
+                                      <span className={styles.memberDetails}>
+                                        <strong>{m.displayName}</strong>
+                                        <span>{m.jobTitle || m.mail || m.userPrincipalName}</span>
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                                {manage.manageable && (
+                                  <Button
+                                    icon={<SubtractCircle20Regular />}
+                                    disabled={card.processing}
+                                    onClick={() => updateCard(group.id, { confirmRemove: m })}
+                                  >
+                                    Remove
+                                  </Button>
+                                )}
                               </div>
                             ))}
+                            {visibleMembers.length === 0 && (
+                              <p className={styles.emptyText}>
+                                {(card.members ? card.members.length : 0) === 0
+                                  ? 'No members were returned for this group.'
+                                  : 'No members match your filter.'}
+                              </p>
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </section>
+                        )}
+
+                        {recentForGroup.length > 0 && (
+                          <div className={styles.subSection}>
+                            <h3>Your recent requests</h3>
+                            <div className={styles.recentList}>
+                              {recentForGroup.map((r: IRequestSummary) => (
+                                <div className={styles.recentRow} key={`req-${r.id}`}>
+                                  <span
+                                    className={`${styles.statusPill} ${
+                                      r.status === 'Completed'
+                                        ? styles.statusCompleted
+                                        : r.status === 'Failed'
+                                        ? styles.statusFailed
+                                        : styles.statusPending
+                                    }`}
+                                  >
+                                    {r.status}
+                                  </span>
+                                  <span className={styles.memberDetails}>
+                                    <strong>{r.action}: {r.memberDisplayName}</strong>
+                                    <span>{r.resultMessage || r.requestedOn || ''}</span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </section>
+    </FluentProvider>
   );
 };
 
