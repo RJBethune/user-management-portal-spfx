@@ -66,7 +66,7 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.0.9';
+  public static readonly buildVersion: string = '1.2.0';
 
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
   private _unhandledRejectionHandler: ((e: PromiseRejectionEvent) => void) | undefined;
@@ -231,6 +231,14 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
       });
     };
     this._unhandledRejectionHandler = (e: PromiseRejectionEvent): void => {
+      // Some third-party controls (notably the @pnp LivePersona profile card) reject promises
+      // with no reason while prefetching profile data. These are benign and non-actionable, so
+      // swallow them entirely (preventDefault keeps the browser from logging them too) and only
+      // surface rejections that actually carry a reason.
+      if (e.reason === undefined || e.reason === null) {
+        e.preventDefault();
+        return;
+      }
       console.error('365 Account Management diagnostic unhandled rejection', {
         message: toMessage(e.reason, 'Unhandled promise rejection'),
         reason: e.reason

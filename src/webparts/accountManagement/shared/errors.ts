@@ -19,7 +19,7 @@ export function toMessage(err: unknown, fallback: string = 'Something went wrong
       if (json && json !== '{}' && json !== '[]') {
         return json;
       }
-    } catch (e) {
+    } catch {
       /* circular — ignore */
     }
   }
@@ -41,7 +41,7 @@ function fromString(value: string): string | undefined {
       if (inner) {
         return inner;
       }
-    } catch (e) {
+    } catch {
       /* not JSON */
     }
   }

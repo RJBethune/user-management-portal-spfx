@@ -40,7 +40,7 @@ export class GraphService {
         `?$select=id,displayName,mail,userPrincipalName,jobTitle&$top=999`;
       while (path) {
         const page: any = await client.api(this._toGraphApiPath(path)).get();
-        collected.push.apply(collected, page.value);
+        collected.push(...page.value);
         path = page['@odata.nextLink'];
       }
       diag(`${DIAG} Graph group members loaded`, { groupId, count: collected.length });
@@ -143,7 +143,7 @@ export class GraphService {
       const url: URL = new URL(value);
       const path: string = url.pathname.replace(/^\/(v1\.0|beta)/i, '');
       return `${path}${url.search}`;
-    } catch (e) {
+    } catch {
       return value;
     }
   }

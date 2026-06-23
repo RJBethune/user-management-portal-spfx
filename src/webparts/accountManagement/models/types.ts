@@ -37,6 +37,8 @@ export interface IRequestSummary {
   resultMessage?: string;
   requestedOn?: string;
   requesterName?: string;
+  /** SharePoint Modified — when the request row was last edited (e.g. the flow's write-back). */
+  modified?: string;
 }
 
 export interface IMembershipRequest {

@@ -24,8 +24,8 @@ export interface IListConfig {
 }
 
 export const DEFAULT_LIST_CONFIG: IListConfig = {
-  requestListTitle: 'Group Membership Audit Test',
-  groupListTitle: 'Group Management Test Data',
+  requestListTitle: 'Group Membership Requests',
+  groupListTitle: 'Managed Groups',
   authorizedAdminsListTitle: 'Group Management Authorized Admins'
 };
 
@@ -123,6 +123,7 @@ export class AccountManagementService {
       payload.Justification = input.justification.trim();
     }
     payload.MemberEntraIdId = await this._ensureUserId(input.member.userPrincipalName || input.member.mail);
+    payload.RequestedById = await this._currentUserId(); // Person column "RequestedBy" = the signed-in initiator
 
     return this._mapRequest(await this._postRequestItem(payload));
   }
@@ -152,6 +153,7 @@ export class AccountManagementService {
       if (input.justification && input.justification.trim()) {
         payload.Justification = input.justification.trim();
       }
+      payload.RequestedById = await this._currentUserId(); // Person column "RequestedBy" = the signed-in initiator
       await this._postRequestItem(payload);
     } catch (e) {
       console.warn('365 Account Management: could not write the SharePoint-change audit record.', e);
@@ -164,10 +166,14 @@ export class AccountManagementService {
     try {
       return await this._post(url, payload);
     } catch (e) {
-      if (payload && Object.prototype.hasOwnProperty.call(payload, 'Justification')) {
+      // Justification and RequestedBy are optional add-on columns; if the list doesn't have them
+      // yet, retry without them so the core request still goes through.
+      const optional: string[] = ['Justification', 'RequestedById'];
+      const present: string[] = optional.filter((k: string) => Object.prototype.hasOwnProperty.call(payload, k));
+      if (present.length > 0) {
         const fallback: any = { ...payload };
-        delete fallback.Justification;
-        console.warn('365 Account Management: request list has no Justification column; submitting without it.');
+        present.forEach((k: string) => delete fallback[k]);
+        console.warn(`365 Account Management: request list missing optional column(s) ${present.join(', ')}; submitting without them.`);
         return this._post(url, fallback);
       }
       throw e;
@@ -198,7 +204,7 @@ export class AccountManagementService {
         if (ensured && ensured.LoginName) {
           loginName = ensured.LoginName;
         }
-      } catch (e) {
+      } catch {
         /* fall back to the constructed claim */
       }
       diag(`${DIAG} SharePoint group add`, { spGroupId: input.spGroupId, loginName });
@@ -327,6 +333,20 @@ export class AccountManagementService {
     return this._get(`${this._webUrl}/_api/web/currentuser?$select=Id,Title,Email,UserPrincipalName`);
   }
 
+  /** Cached SharePoint site-user id of the signed-in user (for the RequestedBy Person column). */
+  private _currentUserIdCache?: number;
+  private async _currentUserId(): Promise<number | undefined> {
+    if (this._currentUserIdCache === undefined) {
+      try {
+        const u: ICurrentUser = await this._getCurrentUser();
+        this._currentUserIdCache = u && typeof u.Id === 'number' ? u.Id : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+    return this._currentUserIdCache;
+  }
+
   private async _ensureUserId(login: string | undefined): Promise<number | undefined> {
     if (!login) {
       return undefined;
@@ -334,7 +354,7 @@ export class AccountManagementService {
     try {
       const result: any = await this._post(`${this._webUrl}/_api/web/ensureuser`, { logonName: login });
       return result.Id;
-    } catch (e) {
+    } catch {
       return undefined;
     }
   }
@@ -369,6 +389,7 @@ export class AccountManagementService {
       'Status',
       'ResultMessage',
       'RequestedOn',
+      'Modified',
       'Author/Title'
     ].join(',');
     const url: string =
@@ -384,7 +405,8 @@ export class AccountManagementService {
       status: e.Status || 'Pending',
       resultMessage: this._optional(e.ResultMessage),
       requestedOn: e.RequestedOn,
-      requesterName: e.Author && e.Author.Title
+      requesterName: e.Author && e.Author.Title,
+      modified: e.Modified
     }));
   }
 

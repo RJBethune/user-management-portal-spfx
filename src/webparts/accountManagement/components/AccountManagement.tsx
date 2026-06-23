@@ -18,7 +18,8 @@ import {
   PersonAdd20Regular,
   ArrowSync20Regular,
   SubtractCircle20Regular,
-  Dismiss20Regular
+  Dismiss20Regular,
+  Print20Regular
 } from '@fluentui/react-icons';
 import { LivePersona } from '@pnp/spfx-controls-react/lib/LivePersona';
 import { buildFluentTheme } from './theme';
@@ -58,6 +59,7 @@ interface ICardState {
   processingMessage?: string;
   alert?: IAlert;
   confirmRemove?: IUser;
+  recentOpen?: boolean;
 }
 
 const ACTION_LABEL: { [key: string]: string } = {
@@ -81,6 +83,14 @@ function initials(name: string): string {
       .map((w: string) => w.charAt(0).toUpperCase())
       .join('') || '?'
   );
+}
+
+function formatDateTime(iso: string | undefined): string {
+  if (!iso) {
+    return '';
+  }
+  const d: Date = new Date(iso);
+  return isNaN(d.getTime()) ? '' : d.toLocaleString();
 }
 
 function applyOfficeScope(all: IOfficeGroup[], spec: string): IOfficeGroup[] {
@@ -115,6 +125,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const [topError, setTopError] = React.useState<string | undefined>(undefined);
   const [cards, setCards] = React.useState<{ [id: number]: ICardState }>({});
   const [recent, setRecent] = React.useState<IRequestSummary[]>([]);
+  const [printing, setPrinting] = React.useState<boolean>(false);
+  const [printNote, setPrintNote] = React.useState<string | undefined>(undefined);
 
   // Fluent v9 theme (maps the SharePoint section theme onto v9 brand tokens).
   const theme = React.useMemo(() => buildFluentTheme(), []);
@@ -125,6 +137,29 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     setCards((prev: { [id: number]: ICardState }) => {
       const next: { [id: number]: ICardState } = { ...prev };
       next[id] = { ...(prev[id] || {}), ...patch };
+      return next;
+    });
+  };
+
+  // Reflect a just-confirmed add/remove in the local member list immediately. The Graph
+  // /groups/{id}/members endpoint is eventually consistent, so re-reading it right after the
+  // flow's write can still return the pre-change list for several seconds. Trust the confirmed
+  // result here; the Refresh button re-queries Graph once it has caught up.
+  const applyMemberChange = (id: number, action: MembershipAction, member: IUser): void => {
+    const key = (u: IUser): string => (u.id || u.userPrincipalName || u.mail || '').toLowerCase();
+    setCards((prev: { [id: number]: ICardState }) => {
+      const card: ICardState = prev[id] || {};
+      const existing: IUser[] = card.members || [];
+      let members: IUser[];
+      if (action === 'Remove Member') {
+        members = existing.filter((m: IUser) => key(m) !== key(member));
+      } else if (existing.some((m: IUser) => key(m) === key(member))) {
+        members = existing; // already present (idempotent add) — leave as-is
+      } else {
+        members = existing.concat([member]);
+      }
+      const next: { [id: number]: ICardState } = { ...prev };
+      next[id] = { ...card, members: members };
       return next;
     });
   };
@@ -140,7 +175,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const loadRecent = async (): Promise<void> => {
     try {
       setRecent(await spService.current.getRecentRequests(25));
-    } catch (e) {
+    } catch {
       /* recent history is best-effort */
     }
   };
@@ -276,6 +311,35 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     }, SEARCH_DEBOUNCE_MS);
   };
 
+  // Background tracker for a queued O365 request: polls the request item without blocking the card,
+  // then reconciles — refreshes recent, and reverts the optimistic member change if the flow Failed.
+  const trackRequest = (
+    group: IOfficeGroup,
+    action: MembershipAction,
+    member: IUser,
+    requestId: number
+  ): void => {
+    spService.current
+      .pollRequest(requestId, () => undefined, props.pollTimeoutMs)
+      .then((result) => {
+        if (result.status === 'Failed') {
+          applyMemberChange(group.id, action === 'Add Member' ? 'Remove Member' : 'Add Member', member);
+          updateCard(group.id, {
+            alert: {
+              type: 'error',
+              text: requestResultText(result.resultMessage, result.authorizationResult, false)
+            }
+          });
+        }
+        loadRecent().catch(() => undefined);
+      })
+      .catch(() => {
+        // Timed out or errored mid-poll — the flow may still finish; leave the optimistic state and
+        // let the recent-requests panel reflect the latest status.
+        loadRecent().catch(() => undefined);
+      });
+  };
+
   const submit = async (
     group: IOfficeGroup,
     action: MembershipAction,
@@ -304,15 +368,13 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           alert: { type: 'success', text: 'Membership updated.' }
         });
         loadRecent().catch(() => undefined);
+        // SharePoint REST is read-after-write consistent, so re-reading reflects the change.
+        await loadMembers(group);
       } else {
+        // Queue model: file the Pending request, reflect the change optimistically, then re-enable the
+        // card right away and track the flow's result in the background so more changes can be queued.
         const created = await spService.current.createMembershipRequest({ action, group, member, justification });
-        updateCard(group.id, { processingMessage: 'Waiting for Power Automate to finish...' });
-        const result = await spService.current.pollRequest(
-          created.id,
-          (r) => updateCard(group.id, { processingMessage: `Request status: ${r.status}` }),
-          props.pollTimeoutMs
-        );
-        const ok: boolean = result.status === 'Completed';
+        applyMemberChange(group.id, action, member);
         updateCard(group.id, {
           processing: false,
           processingMessage: undefined,
@@ -320,16 +382,20 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           directoryQuery: '',
           directoryResults: [],
           justification: undefined,
+          recentOpen: true,
           alert: {
-            type: ok ? 'success' : 'error',
-            text: requestResultText(result.resultMessage, result.authorizationResult, ok)
+            type: 'info',
+            text: `Request submitted for ${member.displayName}. Tracking it in "Your recent requests".`
           }
         });
         loadRecent().catch(() => undefined);
+        trackRequest(group, action, member, created.id);
       }
     } catch (err) {
       if (isTimeout(err)) {
         // The flow may still finish — present as a neutral "still processing" warning, not a failure.
+        // Don't re-read here: the change may or may not have landed and Graph is lagging either way;
+        // the message tells the user to use Refresh once it settles.
         updateCard(group.id, {
           processing: false,
           processingMessage: undefined,
@@ -347,11 +413,105 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           processingMessage: undefined,
           alert: { type: 'error', text: friendlyError(err) }
         });
+        // A Pending request row may have been written before polling failed — keep history in sync.
+        loadRecent().catch(() => undefined);
+        // The change did not go through, so the current list is still accurate; re-read to be safe.
+        await loadMembers(group);
       }
-    } finally {
-      // Always refresh the member list — even on timeout, where the change may have landed.
-      await loadMembers(group);
     }
+  };
+
+  interface IPrintSection {
+    group: IOfficeGroup;
+    members: IUser[];
+    owners: IUser[];
+  }
+
+  // Print View: gather members (and O365 owners) for every manageable group, then open a clean,
+  // self-contained print document in a new window (the web part can't restyle the whole SP page).
+  const printAll = async (): Promise<void> => {
+    setPrintNote(undefined);
+    setPrinting(true);
+    try {
+      const sections: IPrintSection[] = [];
+      for (const g of groups) {
+        if (!getManageability(g).manageable) {
+          continue;
+        }
+        let members: IUser[] | undefined = cards[g.id] && cards[g.id].members;
+        if (!members) {
+          try {
+            members = await graphService.current.getGroupMembers(g.groupId);
+          } catch {
+            members = [];
+          }
+        }
+        let owners: IUser[] = [];
+        if (!isSharePointGroup(g.groupId)) {
+          owners = (cards[g.id] && cards[g.id].owners) || [];
+          if (owners.length === 0) {
+            try {
+              owners = await graphService.current.getGroupOwners(g.groupId);
+            } catch {
+              owners = [];
+            }
+          }
+        }
+        sections.push({ group: g, members: members || [], owners: owners });
+      }
+      openPrintWindow(sections);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const openPrintWindow = (sections: IPrintSection[]): void => {
+    const escapes: { [k: string]: string } = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+    const esc = (s: string | undefined): string => (s || '').replace(/[&<>"]/g, (c: string) => escapes[c]);
+    const who: string = props.userDisplayName || props.context.pageContext.user.displayName || '';
+    const stamp: string = new Date().toLocaleString();
+    const body: string = sections
+      .map((sec: IPrintSection) => {
+        const rows: string =
+          sec.members
+            .map(
+              (m: IUser) =>
+                `<tr><td>${esc(m.displayName)}</td><td>${esc(m.mail || m.userPrincipalName)}</td><td>${esc(m.jobTitle)}</td></tr>`
+            )
+            .join('') || '<tr><td colspan="3">No members.</td></tr>';
+        const owners: string = sec.owners.length
+          ? `<p class="owners"><strong>Owners:</strong> ${sec.owners.map((o: IUser) => esc(o.displayName)).join(', ')}</p>`
+          : '';
+        return (
+          `<section><h2>${esc(sec.group.title)}</h2>` +
+          `<p class="meta">${esc(sec.group.mail || sec.group.siteTitle || sec.group.groupId)} &middot; ` +
+          `${sec.members.length} member${sec.members.length === 1 ? '' : 's'}</p>${owners}` +
+          `<table><thead><tr><th>Name</th><th>Email</th><th>Title</th></tr></thead><tbody>${rows}</tbody></table></section>`
+        );
+      })
+      .join('');
+    const html: string =
+      '<!doctype html><html><head><meta charset="utf-8"><title>365 Account Management — Membership</title><style>' +
+      'body{font-family:Segoe UI,Arial,sans-serif;color:#222;margin:24px;}' +
+      'h1{font-size:20px;margin:0 0 4px;}h2{font-size:16px;margin:18px 0 4px;}' +
+      'header{border-bottom:2px solid #ddd;padding-bottom:8px;margin-bottom:8px;}' +
+      '.sub{color:#666;font-size:12px;margin:0;}.meta{color:#666;font-size:12px;margin:0 0 6px;}' +
+      '.owners{font-size:12px;margin:0 0 6px;}' +
+      'table{border-collapse:collapse;width:100%;font-size:12px;}' +
+      'th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;}th{background:#f3f3f3;}' +
+      'section{page-break-inside:avoid;}@media print{body{margin:0;}}' +
+      '</style></head><body>' +
+      `<header><h1>Group Membership</h1><p class="sub">Printed by ${esc(who)} on ${esc(stamp)}</p></header>` +
+      (body || '<p>No groups to print.</p>') +
+      '<script>window.onload=function(){window.print();}</script></body></html>';
+    const win: Window | null = window.open('', '_blank');
+    if (!win) {
+      setPrintNote('Your browser blocked the print window. Allow pop-ups for this site and try again.');
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
   };
 
   const renderPersona = (user: IUser, inner: JSX.Element): JSX.Element => {
@@ -445,7 +605,32 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                 className={styles.search}
                 aria-label="Search the offices you manage"
               />
+              <Button
+                appearance="secondary"
+                icon={<Print20Regular />}
+                disabled={printing}
+                onClick={() => {
+                  printAll().catch(() => undefined);
+                }}
+              >
+                {printing ? 'Preparing…' : 'Print all'}
+              </Button>
             </div>
+            {printNote && (
+              <MessageBar intent="warning" layout="multiline">
+                <MessageBarBody>{printNote}</MessageBarBody>
+                <MessageBarActions
+                  containerAction={
+                    <Button
+                      appearance="transparent"
+                      aria-label="Dismiss"
+                      icon={<Dismiss20Regular />}
+                      onClick={() => setPrintNote(undefined)}
+                    />
+                  }
+                />
+              </MessageBar>
+            )}
 
             <div className={styles.grid}>
               {filtered.map((group: IOfficeGroup) => {
@@ -496,6 +681,21 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           {group.siteTitle && <span>{group.siteTitle}</span>}
                         </div>
 
+                        {manage.manageable && (card.members || card.owners) && (
+                          <div className={styles.statsRow}>
+                            {card.members && (
+                              <span>
+                                <strong>{card.members.length}</strong> member{card.members.length === 1 ? '' : 's'}
+                              </span>
+                            )}
+                            {!isSharePointGroup(group.groupId) && card.owners && (
+                              <span>
+                                <strong>{card.owners.length}</strong> owner{card.owners.length === 1 ? '' : 's'}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                         {props.requireJustification && manage.manageable && (
                           <Field label="Reason for this change" required>
                             <Textarea
@@ -531,7 +731,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                         )}
 
                         {card.confirmRemove && (
-                          <MessageBar intent="warning">
+                          <MessageBar intent="warning" layout="multiline">
                             <MessageBarBody>
                               Remove <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
                               {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() === currentUserKey
@@ -715,28 +915,50 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
                         {recentForGroup.length > 0 && (
                           <div className={styles.subSection}>
-                            <h3>Your recent requests</h3>
-                            <div className={styles.recentList}>
-                              {recentForGroup.map((r: IRequestSummary) => (
-                                <div className={styles.recentRow} key={`req-${r.id}`}>
-                                  <span
-                                    className={`${styles.statusPill} ${
-                                      r.status === 'Completed'
-                                        ? styles.statusCompleted
-                                        : r.status === 'Failed'
-                                        ? styles.statusFailed
-                                        : styles.statusPending
-                                    }`}
-                                  >
-                                    {r.status}
-                                  </span>
-                                  <span className={styles.memberDetails}>
-                                    <strong>{r.action}: {r.memberDisplayName}</strong>
-                                    <span>{r.resultMessage || r.requestedOn || ''}</span>
-                                  </span>
+                            <button
+                              type="button"
+                              className={styles.collapseHeader}
+                              onClick={() => updateCard(group.id, { recentOpen: !card.recentOpen })}
+                              aria-expanded={!!card.recentOpen}
+                            >
+                              <h3>Your recent requests ({recentForGroup.length})</h3>
+                              {card.recentOpen ? (
+                                <ChevronUp20Regular className={styles.chevron} />
+                              ) : (
+                                <ChevronDown20Regular className={styles.chevron} />
+                              )}
+                            </button>
+                            {card.recentOpen && (
+                              <div className={styles.recentScroll}>
+                                <div className={styles.recentList}>
+                                  {recentForGroup.map((r: IRequestSummary) => {
+                                    const edited: string = formatDateTime(r.modified);
+                                    const detail: string = [r.resultMessage, edited ? `edited ${edited}` : '']
+                                      .filter(Boolean)
+                                      .join(' · ');
+                                    return (
+                                      <div className={styles.recentRow} key={`req-${r.id}`}>
+                                        <span
+                                          className={`${styles.statusPill} ${
+                                            r.status === 'Completed'
+                                              ? styles.statusCompleted
+                                              : r.status === 'Failed'
+                                              ? styles.statusFailed
+                                              : styles.statusPending
+                                          }`}
+                                        >
+                                          {r.status}
+                                        </span>
+                                        <span className={styles.memberDetails}>
+                                          <strong>{r.action}: {r.memberDisplayName}</strong>
+                                          <span>{detail}</span>
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

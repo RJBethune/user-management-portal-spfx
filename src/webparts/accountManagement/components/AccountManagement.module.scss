@@ -41,6 +41,7 @@
 .toolbar {
   align-items: center;
   display: flex;
+  gap: 12px;
   margin-bottom: 28px;
 }
 
@@ -310,6 +311,48 @@
 .emptyText {
   color: #605e5c;
   margin: 0;
+}
+
+.statsRow {
+  color: #605e5c;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 6px 16px;
+
+  strong {
+    color: #323130;
+  }
+}
+
+.collapseHeader {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+
+  h3 {
+    font-size: 16px;
+    font-weight: 650;
+    margin: 0;
+  }
+
+  &:focus-visible {
+    outline: 1px solid #8ab4f8;
+    outline-offset: 2px;
+  }
+}
+
+.recentScroll {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 @media (max-width: 860px) {
