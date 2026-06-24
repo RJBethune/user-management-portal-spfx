@@ -561,7 +561,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       <FluentProvider theme={theme} style={{ background: 'transparent' }}>
         <section className={styles.accountManagement}>
           {versionBadge}
-          <MessageBar intent="info">
+          <MessageBar intent="info" layout="multiline">
             <MessageBarBody>
               {scopedOut
                 ? 'None of the offices you are authorized to manage are configured to show on this page. Check the web part’s “Offices to show” setting.'
@@ -604,7 +604,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         </div>
 
         {topError && (
-          <MessageBar intent="error" politeness="assertive">
+          <MessageBar intent="error" politeness="assertive" layout="multiline">
             <MessageBarBody>{topError}</MessageBarBody>
           </MessageBar>
         )}
@@ -723,13 +723,13 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                         )}
 
                         {!manage.manageable && (
-                          <MessageBar intent="warning">
+                          <MessageBar intent="warning" layout="multiline">
                             <MessageBarBody>{manage.reason}</MessageBarBody>
                           </MessageBar>
                         )}
 
                         {card.alert && (
-                          <MessageBar intent={card.alert.type} politeness={card.alert.type === 'error' ? 'assertive' : 'polite'}>
+                          <MessageBar intent={card.alert.type} politeness={card.alert.type === 'error' ? 'assertive' : 'polite'} layout="multiline">
                             <MessageBarBody>{card.alert.text}</MessageBarBody>
                             <MessageBarActions
                               containerAction={
@@ -884,7 +884,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           )}
 
                         {card.memberError && (
-                          <MessageBar intent="error" politeness="assertive">
+                          <MessageBar intent="error" politeness="assertive" layout="multiline">
                             <MessageBarBody>{card.memberError}</MessageBarBody>
                           </MessageBar>
                         )}
