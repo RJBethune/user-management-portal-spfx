@@ -1,4 +1,5 @@
 import { WebPartContext } from '@microsoft/sp-webpart-base';
+import { IReadonlyTheme } from '@microsoft/sp-component-base';
 import { IListConfig } from '../services/AccountManagementService';
 
 export interface IAccountManagementProps {
@@ -19,4 +20,6 @@ export interface IAccountManagementProps {
   startCollapsed: boolean;
   /** Require a justification note before Add/Remove (captured into the request item). */
   requireJustification: boolean;
+  /** SharePoint section theme, mapped onto Fluent v9 tokens (supports dark/inverted sections). */
+  sectionTheme?: IReadonlyTheme;
 }

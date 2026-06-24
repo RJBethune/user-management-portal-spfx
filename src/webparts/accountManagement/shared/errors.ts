@@ -87,6 +87,12 @@ export function friendlyError(err: unknown): string {
   if (m.indexOf('access denied') !== -1 || m.indexOf('unauthorized') !== -1 || m.indexOf('(403)') !== -1 || m.indexOf('(401)') !== -1 || m.indexOf('do not have permission') !== -1) {
     return 'You may not have permission to do that here. Contact your site owner.';
   }
+  if (m.indexOf("list '") !== -1 && m.indexOf('does not exist') !== -1) {
+    return 'A required SharePoint list was not found. Check the web part Data source list titles, or contact your administrator.';
+  }
+  if (m.indexOf('field or property') !== -1 && m.indexOf('does not exist') !== -1) {
+    return 'A required column is missing from a SharePoint list. Contact your administrator.';
+  }
   if (m.indexOf('does not exist or is not unique') !== -1 || m.indexOf('(404)') !== -1 || m.indexOf('not found') !== -1 || m.indexOf('does not exist') !== -1) {
     return 'That account or office couldn’t be found in the directory. Double-check and try again.';
   }

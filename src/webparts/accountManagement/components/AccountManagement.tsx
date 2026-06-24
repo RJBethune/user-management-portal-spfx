@@ -73,6 +73,8 @@ const SEARCH_DEBOUNCE_MS: number = 400;
 const SEARCH_RESULT_CAP: number = 25;
 // Show the member filter box only once a group is big enough to warrant it.
 const MEMBER_FILTER_THRESHOLD: number = 5;
+// Cap how many member rows render at once (large groups); the filter box finds anyone beyond this.
+const MEMBER_RENDER_CAP: number = 200;
 
 function initials(name: string): string {
   return (
@@ -129,7 +131,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const [printNote, setPrintNote] = React.useState<string | undefined>(undefined);
 
   // Fluent v9 theme (maps the SharePoint section theme onto v9 brand tokens).
-  const theme = React.useMemo(() => buildFluentTheme(), []);
+  const theme = React.useMemo(() => buildFluentTheme(props.sectionTheme), [props.sectionTheme]);
 
   const currentUserKey: string = (props.context.pageContext.user.email || '').toLowerCase();
 
@@ -146,7 +148,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   // flow's write can still return the pre-change list for several seconds. Trust the confirmed
   // result here; the Refresh button re-queries Graph once it has caught up.
   const applyMemberChange = (id: number, action: MembershipAction, member: IUser): void => {
-    const key = (u: IUser): string => (u.id || u.userPrincipalName || u.mail || '').toLowerCase();
+    // UPN/mail first so the key matches across id-spaces (Graph GUID vs SharePoint site-user id).
+    const key = (u: IUser): string => (u.userPrincipalName || u.mail || u.id || '').toLowerCase();
     setCards((prev: { [id: number]: ICardState }) => {
       const card: ICardState = prev[id] || {};
       const existing: IUser[] = card.members || [];
@@ -217,7 +220,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   }, []);
 
   const loadMembers = async (group: IOfficeGroup): Promise<void> => {
-    updateCard(group.id, { membersLoading: true, memberError: undefined, members: undefined });
+    updateCard(group.id, { membersLoading: true, memberError: undefined, members: undefined, memberFilter: undefined });
     try {
       const members: IUser[] = await graphService.current.getGroupMembers(group.groupId);
       updateCard(group.id, { members: members, membersLoading: false });
@@ -323,13 +326,16 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       .pollRequest(requestId, () => undefined, props.pollTimeoutMs)
       .then((result) => {
         if (result.status === 'Failed') {
+          // Undo the optimistic change, name the member so a queued failure is unambiguous, and
+          // reconcile the list against the server.
           applyMemberChange(group.id, action === 'Add Member' ? 'Remove Member' : 'Add Member', member);
           updateCard(group.id, {
             alert: {
               type: 'error',
-              text: requestResultText(result.resultMessage, result.authorizationResult, false)
+              text: `${member.displayName}: ${requestResultText(result.resultMessage, result.authorizationResult, false)}`
             }
           });
+          loadMembers(group).catch(() => undefined);
         }
         loadRecent().catch(() => undefined);
       })
@@ -431,6 +437,16 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   // self-contained print document in a new window (the web part can't restyle the whole SP page).
   const printAll = async (): Promise<void> => {
     setPrintNote(undefined);
+    // Open the print window synchronously inside the click gesture. Opening it AFTER the awaited Graph
+    // fetches would run outside the user gesture and get blocked as an unsolicited pop-up.
+    const win: Window | null = window.open('', '_blank');
+    if (!win) {
+      setPrintNote('Your browser blocked the print window. Allow pop-ups for this site and try again.');
+      return;
+    }
+    win.document.write(
+      '<!doctype html><title>Preparing…</title><body style="font:14px Segoe UI,Arial,sans-serif;color:#444;padding:24px">Preparing the membership report…</body>'
+    );
     setPrinting(true);
     try {
       const sections: IPrintSection[] = [];
@@ -459,13 +475,16 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         }
         sections.push({ group: g, members: members || [], owners: owners });
       }
-      openPrintWindow(sections);
+      writePrintDocument(win, sections);
+    } catch {
+      win.close();
+      setPrintNote('Could not build the print view. Please try again.');
     } finally {
       setPrinting(false);
     }
   };
 
-  const openPrintWindow = (sections: IPrintSection[]): void => {
+  const writePrintDocument = (win: Window, sections: IPrintSection[]): void => {
     const escapes: { [k: string]: string } = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
     const esc = (s: string | undefined): string => (s || '').replace(/[&<>"]/g, (c: string) => escapes[c]);
     const who: string = props.userDisplayName || props.context.pageContext.user.displayName || '';
@@ -476,7 +495,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           sec.members
             .map(
               (m: IUser) =>
-                `<tr><td>${esc(m.displayName)}</td><td>${esc(m.mail || m.userPrincipalName)}</td><td>${esc(m.jobTitle)}</td></tr>`
+                `<tr><td>${esc(m.displayName)}</td><td>${esc(m.mail || m.userPrincipalName)}</td><td>${esc(m.jobTitle) || '&mdash;'}</td></tr>`
             )
             .join('') || '<tr><td colspan="3">No members.</td></tr>';
         const owners: string = sec.owners.length
@@ -504,11 +523,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       `<header><h1>Group Membership</h1><p class="sub">Printed by ${esc(who)} on ${esc(stamp)}</p></header>` +
       (body || '<p>No groups to print.</p>') +
       '<script>window.onload=function(){window.print();}</script></body></html>';
-    const win: Window | null = window.open('', '_blank');
-    if (!win) {
-      setPrintNote('Your browser blocked the print window. Allow pop-ups for this site and try again.');
-      return;
-    }
     win.document.open();
     win.document.write(html);
     win.document.close();
@@ -574,7 +588,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       <section className={styles.accountManagement}>
         {versionBadge}
         <div className={styles.header}>
-          <h2>365 Account Management</h2>
+          <h2>{props.description || '365 Account Management'}</h2>
           <p>{props.introText || 'Add or remove Microsoft 365 group members for groups you are authorized to manage.'}</p>
           {props.helpText && (
             <p className={styles.helpLine}>
@@ -590,7 +604,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         </div>
 
         {topError && (
-          <MessageBar intent="error">
+          <MessageBar intent="error" politeness="assertive">
             <MessageBarBody>{topError}</MessageBarBody>
           </MessageBar>
         )}
@@ -715,7 +729,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                         )}
 
                         {card.alert && (
-                          <MessageBar intent={card.alert.type}>
+                          <MessageBar intent={card.alert.type} politeness={card.alert.type === 'error' ? 'assertive' : 'polite'}>
                             <MessageBarBody>{card.alert.text}</MessageBarBody>
                             <MessageBarActions
                               containerAction={
@@ -870,7 +884,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           )}
 
                         {card.memberError && (
-                          <MessageBar intent="error">
+                          <MessageBar intent="error" politeness="assertive">
                             <MessageBarBody>{card.memberError}</MessageBarBody>
                           </MessageBar>
                         )}
@@ -878,7 +892,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
                         {!card.membersLoading && !card.memberError && (
                           <div className={styles.memberList}>
-                            {visibleMembers.map((m: IUser) => (
+                            {visibleMembers.slice(0, MEMBER_RENDER_CAP).map((m: IUser) => (
                               <div className={styles.memberRow} key={m.id}>
                                 <div className={styles.personaWrap}>
                                   {renderPersona(
@@ -903,6 +917,11 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 )}
                               </div>
                             ))}
+                            {visibleMembers.length > MEMBER_RENDER_CAP && (
+                              <p className={styles.emptyText}>
+                                Showing the first {MEMBER_RENDER_CAP} of {visibleMembers.length}. Use the filter to find a specific person.
+                              </p>
+                            )}
                             {visibleMembers.length === 0 && (
                               <p className={styles.emptyText}>
                                 {(card.members ? card.members.length : 0) === 0

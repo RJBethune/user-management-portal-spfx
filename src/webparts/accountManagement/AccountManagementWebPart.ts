@@ -8,6 +8,7 @@ import {
   PropertyPaneToggle
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
+import { ThemeProvider, IReadonlyTheme } from '@microsoft/sp-component-base';
 import { FluentProvider, MessageBar, MessageBarBody, webLightTheme } from '@fluentui/react-components';
 
 import * as strings from 'AccountManagementWebPartStrings';
@@ -66,12 +67,15 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.2.0';
+  public static readonly buildVersion: string = '1.2.1';
 
+  private _theme: IReadonlyTheme | undefined;
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
   private _unhandledRejectionHandler: ((e: PromiseRejectionEvent) => void) | undefined;
 
   protected onInit(): Promise<void> {
+    const themeProvider: ThemeProvider = this.context.serviceScope.consume(ThemeProvider.serviceKey);
+    this._theme = themeProvider.tryGetTheme();
     this._registerDiagnostics();
     console.info(`365 Account Management web part ${AccountManagementWebPart.buildVersion} loaded`, {
       componentId: this.context.manifest.id,
@@ -108,6 +112,7 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
           helpText: this.properties.helpText || '',
           helpUrl: this.properties.helpUrl || '',
           startCollapsed: !!this.properties.startCollapsed,
+          sectionTheme: this._theme,
           requireJustification: !!this.properties.requireJustification
         })
       );
