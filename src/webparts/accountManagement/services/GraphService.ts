@@ -124,6 +124,20 @@ export class GraphService {
       .sort(byDisplayName);
   }
 
+  /** Object-URL of an O365 group's photo, or undefined when none/404 or not an O365 group. */
+  public async getGroupPhotoUrl(groupId: string): Promise<string | undefined> {
+    if (!groupId || isSharePointGroup(groupId)) {
+      return undefined;
+    }
+    try {
+      const client: MSGraphClientV3 = await this._context.msGraphClientFactory.getClient('3');
+      const blob: Blob = await client.api(`/groups/${groupId}/photo/$value`).responseType('blob' as any).get();
+      return blob && blob.size > 0 ? URL.createObjectURL(blob) : undefined;
+    } catch {
+      return undefined; // 404 (no custom photo) or any error — caller shows the initials tile
+    }
+  }
+
   private _mapUser(raw: any): IUser {
     return {
       id: raw.id,

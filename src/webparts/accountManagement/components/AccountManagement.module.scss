@@ -86,10 +86,28 @@
 
 .groupIcon {
   align-items: center;
-  background: #eef6ff;
+  background: transparent;
   border-radius: 6px;
-  color: #2564cf;
   display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.groupPhoto {
+  border-radius: 6px;
+  height: 30px;
+  object-fit: cover;
+  width: 30px;
+}
+
+.groupInitials {
+  align-items: center;
+  border-radius: 6px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 650;
   height: 30px;
   justify-content: center;
   width: 30px;

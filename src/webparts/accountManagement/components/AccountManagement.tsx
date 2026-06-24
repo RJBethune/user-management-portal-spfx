@@ -12,7 +12,6 @@ import {
   Button
 } from '@fluentui/react-components';
 import {
-  People20Regular,
   ChevronUp20Regular,
   ChevronDown20Regular,
   PersonAdd20Regular,
@@ -87,6 +86,17 @@ function initials(name: string): string {
   );
 }
 
+// Deterministic tile color for a group (mimics the Entra/Teams default colored group tile).
+function colorFor(name: string): string {
+  const palette: string[] = ['#2564cf', '#0b6a0b', '#a4262c', '#8764b8', '#038387', '#ca5010', '#5c2e91', '#486991'];
+  const n: string = name || '';
+  let sum: number = 0;
+  for (let i: number = 0; i < n.length; i++) {
+    sum += n.charCodeAt(i);
+  }
+  return palette[sum % palette.length];
+}
+
 function formatDateTime(iso: string | undefined): string {
   if (!iso) {
     return '';
@@ -129,6 +139,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const [recent, setRecent] = React.useState<IRequestSummary[]>([]);
   const [printing, setPrinting] = React.useState<boolean>(false);
   const [printNote, setPrintNote] = React.useState<string | undefined>(undefined);
+  const [groupPhotos, setGroupPhotos] = React.useState<{ [id: number]: string }>({});
 
   // Fluent v9 theme (maps the SharePoint section theme onto v9 brand tokens).
   const theme = React.useMemo(() => buildFluentTheme(props.sectionTheme), [props.sectionTheme]);
@@ -218,6 +229,27 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       cancelled = true;
     };
   }, []);
+
+  // Fetch the real M365 group photo for each O365 group; groups without one fall back to a colored tile.
+  React.useEffect(() => {
+    let cancelled: boolean = false;
+    groups.forEach((g: IOfficeGroup) => {
+      if (isSharePointGroup(g.groupId)) {
+        return;
+      }
+      graphService.current
+        .getGroupPhotoUrl(g.groupId)
+        .then((url: string | undefined) => {
+          if (!cancelled && url) {
+            setGroupPhotos((prev: { [id: number]: string }) => ({ ...prev, [g.id]: url }));
+          }
+        })
+        .catch(() => undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [groups]);
 
   const loadMembers = async (group: IOfficeGroup): Promise<void> => {
     updateCard(group.id, { membersLoading: true, memberError: undefined, members: undefined, memberFilter: undefined });
@@ -674,7 +706,13 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                       aria-expanded={expanded}
                     >
                       <span className={styles.groupIcon} aria-hidden="true">
-                        <People20Regular />
+                        {groupPhotos[group.id] ? (
+                          <img src={groupPhotos[group.id]} alt="" className={styles.groupPhoto} />
+                        ) : (
+                          <span className={styles.groupInitials} style={{ backgroundColor: colorFor(group.title) }}>
+                            {initials(group.title)}
+                          </span>
+                        )}
                       </span>
                       <span className={styles.groupTitleBlock}>
                         <span className={styles.groupTitle}>{group.title}</span>
