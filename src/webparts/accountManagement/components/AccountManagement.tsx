@@ -26,7 +26,7 @@ import styles from './AccountManagement.module.scss';
 import { IAccountManagementProps } from './IAccountManagementProps';
 import { GraphService } from '../services/GraphService';
 import { AccountManagementService } from '../services/AccountManagementService';
-import { IOfficeGroup, IUser, IRequestSummary, MembershipAction } from '../models/types';
+import { IOfficeGroup, IUser, IRequestSummary, ISitePermission, MembershipAction } from '../models/types';
 import { isSharePointGroup } from '../shared/groupType';
 import { getManageability, IManageability } from '../shared/manageability';
 import { friendlyError, isTimeout, requestResultText } from '../shared/errors';
@@ -59,6 +59,8 @@ interface ICardState {
   alert?: IAlert;
   confirmRemove?: IUser;
   recentOpen?: boolean;
+  sitePerms?: ISitePermission[];
+  sitePermsLoading?: boolean;
 }
 
 const ACTION_LABEL: { [key: string]: string } = {
@@ -275,16 +277,32 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     }
   };
 
-  // Load members + owners for the expanded, manageable group.
+  const loadSitePerms = async (group: IOfficeGroup): Promise<void> => {
+    updateCard(group.id, { sitePermsLoading: true });
+    try {
+      const rows: ISitePermission[] = await spService.current.getGroupSitePermissions(group.groupId);
+      updateCard(group.id, { sitePerms: rows, sitePermsLoading: false });
+    } catch {
+      updateCard(group.id, { sitePerms: [], sitePermsLoading: false });
+    }
+  };
+
+  // Load site permissions for any expanded group; members + owners for manageable ones.
   React.useEffect(() => {
     if (selectedGroupId === undefined) {
       return;
     }
     const group: IOfficeGroup | undefined = groups.filter((g: IOfficeGroup) => g.id === selectedGroupId)[0];
-    if (!group || !getManageability(group).manageable) {
+    if (!group) {
       return;
     }
     const card: ICardState = cards[selectedGroupId] || {};
+    if (!card.sitePermsLoading && !card.sitePerms) {
+      loadSitePerms(group).catch(() => undefined);
+    }
+    if (!getManageability(group).manageable) {
+      return;
+    }
     if (!card.membersLoading && !card.members) {
       loadMembers(group).catch(() => undefined);
     }
@@ -892,6 +910,28 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 )}
                               </div>
                             )}
+                          </div>
+                        )}
+
+                        {card.sitePerms && card.sitePerms.length > 0 && (
+                          <div className={styles.subSection}>
+                            <h3>Used on these sites</h3>
+                            <div className={styles.sitePermList}>
+                              {card.sitePerms.map((s: ISitePermission, i: number) => (
+                                <div className={styles.sitePermRow} key={`sp-${i}`}>
+                                  <span className={styles.sitePermSite}>
+                                    {s.siteUrl ? (
+                                      <Link href={s.siteUrl} target="_blank">
+                                        {s.siteName}
+                                      </Link>
+                                    ) : (
+                                      s.siteName
+                                    )}
+                                  </span>
+                                  {s.permission && <span className={styles.sitePermLevel}>{s.permission}</span>}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
 

@@ -8,6 +8,7 @@ import {
   IMembershipChangeInput,
   IRequestSummary,
   ICurrentUser,
+  ISitePermission,
   IUser,
   MembershipAction
 } from '../models/types';
@@ -21,12 +22,14 @@ export interface IListConfig {
   requestListTitle: string;
   groupListTitle: string;
   authorizedAdminsListTitle: string;
+  sitePermissionsListTitle: string;
 }
 
 export const DEFAULT_LIST_CONFIG: IListConfig = {
   requestListTitle: 'Group Membership Requests',
   groupListTitle: 'Managed Groups',
-  authorizedAdminsListTitle: 'Group Management Authorized Admins'
+  authorizedAdminsListTitle: 'Group Management Authorized Admins',
+  sitePermissionsListTitle: 'Group Site Permissions'
 };
 
 export class AccountManagementService {
@@ -41,7 +44,9 @@ export class AccountManagementService {
       requestListTitle: (config && config.requestListTitle) || DEFAULT_LIST_CONFIG.requestListTitle,
       groupListTitle: (config && config.groupListTitle) || DEFAULT_LIST_CONFIG.groupListTitle,
       authorizedAdminsListTitle:
-        (config && config.authorizedAdminsListTitle) || DEFAULT_LIST_CONFIG.authorizedAdminsListTitle
+        (config && config.authorizedAdminsListTitle) || DEFAULT_LIST_CONFIG.authorizedAdminsListTitle,
+      sitePermissionsListTitle:
+        (config && config.sitePermissionsListTitle) || DEFAULT_LIST_CONFIG.sitePermissionsListTitle
     };
   }
 
@@ -408,6 +413,27 @@ export class AccountManagementService {
       requesterName: e.Author && e.Author.Title,
       modified: e.Modified
     }));
+  }
+
+  /** Curated 'Group Site Permissions' rows for a group (the sites it's used on + permission level). */
+  public async getGroupSitePermissions(groupId: string): Promise<ISitePermission[]> {
+    if (!groupId) {
+      return [];
+    }
+    const select: string = ['Id', 'SiteName', 'SiteUrl', 'Permission'].join(',');
+    const url: string =
+      `${this._webUrl}/_api/web/lists/getbytitle('${this._config.sitePermissionsListTitle}')/items` +
+      `?$select=${select}&$filter=GroupId eq '${encodeURIComponent(groupId)}'&$orderby=SiteName&$top=500`;
+    try {
+      const items: any[] = (await this._get(url)).value || [];
+      return items.map((e: any): ISitePermission => ({
+        siteName: e.SiteName || (e.SiteUrl && e.SiteUrl.Description) || '(site)',
+        siteUrl: (e.SiteUrl && e.SiteUrl.Url) || (typeof e.SiteUrl === 'string' ? e.SiteUrl : undefined),
+        permission: e.Permission || ''
+      }));
+    } catch {
+      return []; // optional feature — list may not be provisioned yet, or no read access
+    }
   }
 
   private _mapRequest(e: any): IMembershipRequest {

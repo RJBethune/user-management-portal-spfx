@@ -25,6 +25,7 @@ export interface IAccountManagementWebPartProps {
   requestListTitle: string;
   groupListTitle: string;
   authorizedAdminsListTitle: string;
+  sitePermissionsListTitle: string;
   visibleOffices: string;
   pollTimeoutSeconds: number;
   startCollapsed: boolean;
@@ -67,7 +68,7 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.2.3';
+  public static readonly buildVersion: string = '1.3.0';
 
   private _theme: IReadonlyTheme | undefined;
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
@@ -91,7 +92,9 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
         requestListTitle: this.properties.requestListTitle || DEFAULT_LIST_CONFIG.requestListTitle,
         groupListTitle: this.properties.groupListTitle || DEFAULT_LIST_CONFIG.groupListTitle,
         authorizedAdminsListTitle:
-          this.properties.authorizedAdminsListTitle || DEFAULT_LIST_CONFIG.authorizedAdminsListTitle
+          this.properties.authorizedAdminsListTitle || DEFAULT_LIST_CONFIG.authorizedAdminsListTitle,
+        sitePermissionsListTitle:
+          this.properties.sitePermissionsListTitle || DEFAULT_LIST_CONFIG.sitePermissionsListTitle
       };
       const seconds: number =
         this.properties.pollTimeoutSeconds && this.properties.pollTimeoutSeconds > 0
@@ -178,6 +181,11 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
                   label: 'Request list title',
                   description:
                     'O365 (PROD) requests are written here. Point different pages at different request lists to route them to different Power Automate flows.'
+                }),
+                PropertyPaneTextField('sitePermissionsListTitle', {
+                  label: 'Site permissions list title',
+                  description:
+                    'Optional. Curated list of which SharePoint sites (and permission level) each group is used on.'
                 })
               ]
             },

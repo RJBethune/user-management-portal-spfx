@@ -373,6 +373,30 @@
   padding-right: 4px;
 }
 
+.sitePermList {
+  display: grid;
+  gap: 6px;
+}
+
+.sitePermRow {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.sitePermSite {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sitePermLevel {
+  color: #605e5c;
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
 @media (max-width: 860px) {
   .grid {
     grid-template-columns: 1fr;

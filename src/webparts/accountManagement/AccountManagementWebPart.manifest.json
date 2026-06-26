@@ -23,6 +23,7 @@
         "requestListTitle": "Group Membership Requests",
         "groupListTitle": "Managed Groups",
         "authorizedAdminsListTitle": "Group Management Authorized Admins",
+        "sitePermissionsListTitle": "Group Site Permissions",
         "visibleOffices": "",
         "pollTimeoutSeconds": 120,
         "startCollapsed": true,

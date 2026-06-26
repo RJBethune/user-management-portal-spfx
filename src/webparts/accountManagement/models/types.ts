@@ -62,3 +62,10 @@ export interface ICurrentUser {
   Email?: string;
   UserPrincipalName?: string;
 }
+
+/** A SharePoint site (and permission level) a group is used on — curated, from the Group Site Permissions list. */
+export interface ISitePermission {
+  siteName: string;
+  siteUrl?: string;
+  permission: string;
+}
