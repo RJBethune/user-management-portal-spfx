@@ -38,6 +38,8 @@ type AlertIntent = 'success' | 'error' | 'warning' | 'info';
 interface IAlert {
   type: AlertIntent;
   text: string;
+  /** The O365 request this banner is tracking, so it clears only when THAT request finishes. */
+  requestId?: number;
 }
 
 interface ICardState {
@@ -76,6 +78,8 @@ const SEARCH_RESULT_CAP: number = 25;
 const MEMBER_FILTER_THRESHOLD: number = 5;
 // Cap how many member rows render at once (large groups); the filter box finds anyone beyond this.
 const MEMBER_RENDER_CAP: number = 200;
+// A request still Pending after this long is shown as Error (the workflow failed or stalled).
+const STALE_PENDING_MS: number = 5 * 60 * 1000;
 
 function initials(name: string): string {
   return (
@@ -180,6 +184,20 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     });
   };
 
+  // Clear a card's banner only if it still belongs to the given request, so a completed request
+  // never clobbers a newer one's banner.
+  const clearAlertFor = (id: number, requestId: number): void => {
+    setCards((prev: { [id: number]: ICardState }) => {
+      const card: ICardState = prev[id] || {};
+      if (card.alert && card.alert.requestId === requestId) {
+        const next: { [id: number]: ICardState } = { ...prev };
+        next[id] = { ...card, alert: undefined };
+        return next;
+      }
+      return prev;
+    });
+  };
+
   React.useEffect(() => {
     diag('365 Account Management diagnostic React component mounted', {
       buildVersion: props.buildVersion,
@@ -190,7 +208,32 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
   const loadRecent = async (): Promise<void> => {
     try {
-      setRecent(await spService.current.getRecentRequests(25));
+      const rows: IRequestSummary[] = await spService.current.getRecentRequests(25);
+      setRecent(rows);
+      // Drop any "submitted / tracking" banner whose request has reached a terminal state — even if the
+      // background poll already gave up on a slow flow — so the banner never lingers after completion.
+      const terminal: Set<number> = new Set<number>(
+        rows
+          .filter((r: IRequestSummary) => r.status === 'Completed' || r.status === 'Failed')
+          .map((r: IRequestSummary) => r.id)
+      );
+      setCards((prev: { [id: number]: ICardState }) => {
+        let changed: boolean = false;
+        const next: { [id: number]: ICardState } = { ...prev };
+        Object.keys(prev).forEach((k: string) => {
+          const card: ICardState = prev[Number(k)];
+          if (
+            card.alert &&
+            card.alert.type === 'info' &&
+            card.alert.requestId !== undefined &&
+            terminal.has(card.alert.requestId)
+          ) {
+            next[Number(k)] = { ...card, alert: undefined };
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
     } catch {
       /* recent history is best-effort */
     }
@@ -382,10 +425,14 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           updateCard(group.id, {
             alert: {
               type: 'error',
-              text: `${member.displayName}: ${requestResultText(result.resultMessage, result.authorizationResult, false)}`
+              text: `${member.displayName}: ${requestResultText(result.resultMessage, result.authorizationResult, false)}`,
+              requestId
             }
           });
           loadMembers(group).catch(() => undefined);
+        } else {
+          // Completed — drop this request's "submitted / tracking" banner if it's still showing.
+          clearAlertFor(group.id, requestId);
         }
         loadRecent().catch(() => undefined);
       })
@@ -441,7 +488,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           recentOpen: true,
           alert: {
             type: 'info',
-            text: `Request submitted for ${member.displayName}. Tracking it in "Your recent requests".`
+            text: `Request submitted for ${member.displayName}. Tracking it in "Your recent requests".`,
+            requestId: created.id
           }
         });
         loadRecent().catch(() => undefined);
@@ -1030,21 +1078,31 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 <div className={styles.recentList}>
                                   {recentForGroup.map((r: IRequestSummary) => {
                                     const edited: string = formatDateTime(r.modified);
-                                    const detail: string = [r.resultMessage, edited ? `edited ${edited}` : '']
+                                    const submittedMs: number = r.requestedOn ? Date.parse(r.requestedOn) : NaN;
+                                    const stalled: boolean =
+                                      r.status === 'Pending' &&
+                                      !isNaN(submittedMs) &&
+                                      Date.now() - submittedMs > STALE_PENDING_MS;
+                                    const displayStatus: string = stalled ? 'Error' : r.status;
+                                    const detail: string = [
+                                      r.resultMessage,
+                                      stalled ? 'No response from the workflow — refresh to confirm' : '',
+                                      edited ? `edited ${edited}` : ''
+                                    ]
                                       .filter(Boolean)
                                       .join(' · ');
                                     return (
                                       <div className={styles.recentRow} key={`req-${r.id}`}>
                                         <span
                                           className={`${styles.statusPill} ${
-                                            r.status === 'Completed'
+                                            displayStatus === 'Completed'
                                               ? styles.statusCompleted
-                                              : r.status === 'Failed'
+                                              : displayStatus === 'Failed' || displayStatus === 'Error'
                                               ? styles.statusFailed
                                               : styles.statusPending
                                           }`}
                                         >
-                                          {r.status}
+                                          {displayStatus}
                                         </span>
                                         <span className={styles.memberDetails}>
                                           <strong>{r.action}: {r.memberDisplayName}</strong>
