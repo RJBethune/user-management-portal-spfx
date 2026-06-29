@@ -68,7 +68,7 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.3.1';
+  public static readonly buildVersion: string = '1.3.2';
 
   private _theme: IReadonlyTheme | undefined;
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;

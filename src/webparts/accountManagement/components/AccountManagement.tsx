@@ -18,7 +18,8 @@ import {
   ArrowSync20Regular,
   SubtractCircle20Regular,
   Dismiss20Regular,
-  Print20Regular
+  Print20Regular,
+  Warning20Regular
 } from '@fluentui/react-icons';
 import { LivePersona } from '@pnp/spfx-controls-react/lib/LivePersona';
 import { buildFluentTheme } from './theme';
@@ -814,18 +815,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           </div>
                         )}
 
-                        {props.requireJustification && manage.manageable && (
-                          <Field label="Reason for this change" required>
-                            <Textarea
-                              rows={2}
-                              value={card.justification || ''}
-                              placeholder="Why are you making this change? (recorded with the request)"
-                              disabled={card.processing}
-                              onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
-                            />
-                          </Field>
-                        )}
-
                         {!manage.manageable && (
                           <MessageBar intent="warning" layout="multiline">
                             <MessageBarBody>{manage.reason}</MessageBarBody>
@@ -849,15 +838,29 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                         )}
 
                         {card.confirmRemove && (
-                          <MessageBar intent="warning" layout="multiline">
-                            <MessageBarBody>
-                              Remove <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
-                              {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() === currentUserKey
-                                ? ' This is your own access.'
-                                : ''}
-                              {(card.members ? card.members.length : 0) === 1 ? ' This is the last member of the group.' : ''}
-                            </MessageBarBody>
-                            <MessageBarActions>
+                          <div className={styles.confirmBox}>
+                            <div className={styles.confirmText}>
+                              <Warning20Regular className={styles.confirmIcon} />
+                              <span>
+                                Remove <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
+                                {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() === currentUserKey
+                                  ? ' This is your own access.'
+                                  : ''}
+                                {(card.members ? card.members.length : 0) === 1 ? ' This is the last member of the group.' : ''}
+                              </span>
+                            </div>
+                            {props.requireJustification && (
+                              <Field label="Reason for this change" required>
+                                <Textarea
+                                  rows={2}
+                                  value={card.justification || ''}
+                                  placeholder="Why are you making this change? (recorded with the request)"
+                                  disabled={card.processing}
+                                  onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
+                                />
+                              </Field>
+                            )}
+                            <div className={styles.confirmActions}>
                               <Button
                                 appearance="primary"
                                 disabled={justificationMissing}
@@ -866,8 +869,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 Remove
                               </Button>
                               <Button onClick={() => updateCard(group.id, { confirmRemove: undefined })}>Cancel</Button>
-                            </MessageBarActions>
-                          </MessageBar>
+                            </div>
+                          </div>
                         )}
 
                         {card.processing && (
@@ -913,19 +916,32 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                               </div>
                             )}
                             {card.selectedUser && (
-                              <div className={styles.selectedUser}>
-                                <span>
-                                  Add <strong>{card.selectedUser.displayName}</strong>
-                                </span>
-                                <Button
-                                  appearance="primary"
-                                  icon={<PersonAdd20Regular />}
-                                  disabled={card.processing || justificationMissing}
-                                  onClick={() => submit(group, 'Add Member', card.selectedUser as IUser, card.justification)}
-                                >
-                                  Submit
-                                </Button>
-                              </div>
+                              <>
+                                {props.requireJustification && (
+                                  <Field label="Reason for this change" required>
+                                    <Textarea
+                                      rows={2}
+                                      value={card.justification || ''}
+                                      placeholder="Why are you making this change? (recorded with the request)"
+                                      disabled={card.processing}
+                                      onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
+                                    />
+                                  </Field>
+                                )}
+                                <div className={styles.selectedUser}>
+                                  <span>
+                                    Add <strong>{card.selectedUser.displayName}</strong>
+                                  </span>
+                                  <Button
+                                    appearance="primary"
+                                    icon={<PersonAdd20Regular />}
+                                    disabled={card.processing || justificationMissing}
+                                    onClick={() => submit(group, 'Add Member', card.selectedUser as IUser, card.justification)}
+                                  >
+                                    Submit
+                                  </Button>
+                                </div>
+                              </>
                             )}
                           </div>
                         )}

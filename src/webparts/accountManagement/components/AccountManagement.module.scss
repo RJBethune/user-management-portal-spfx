@@ -397,6 +397,34 @@
   font-size: 13px;
 }
 
+.confirmBox {
+  background: #fff8e8;
+  border: 1px solid #f1e2b0;
+  border-radius: 6px;
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.confirmText {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.confirmIcon {
+  color: #b88600;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 @media (max-width: 860px) {
   .grid {
     grid-template-columns: 1fr;
