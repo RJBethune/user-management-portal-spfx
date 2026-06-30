@@ -13,7 +13,6 @@
   },
   "externals": {},
   "localizedResources": {
-    "AccountManagementWebPartStrings": "lib/webparts/accountManagement/loc/{locale}.js",
-    "ControlStrings": "node_modules/@pnp/spfx-controls-react/lib/loc/{locale}.js"
+    "AccountManagementWebPartStrings": "lib/webparts/accountManagement/loc/{locale}.js"
   }
 }

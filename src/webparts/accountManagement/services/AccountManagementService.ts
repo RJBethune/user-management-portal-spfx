@@ -173,9 +173,10 @@ export class AccountManagementService {
     try {
       return await this._post(url, payload);
     } catch (e) {
-      // Justification and RequestedBy are optional add-on columns; if the list doesn't have them
-      // yet, retry without them so the core request still goes through.
-      const optional: string[] = ['Justification', 'RequestedById'];
+      // RequestedBy is optional metadata; if the list lacks that column, retry without it. We do NOT
+      // strip Justification — a required reason must be durably stored, so a missing Justification column
+      // surfaces as an error rather than silently dropping the reason.
+      const optional: string[] = ['RequestedById'];
       const present: string[] = optional.filter((k: string) => Object.prototype.hasOwnProperty.call(payload, k));
       if (present.length > 0) {
         const fallback: any = { ...payload };
@@ -198,7 +199,7 @@ export class AccountManagementService {
     siteUrl?: string;
   }): Promise<void> {
     const gid: string = encodeURIComponent(input.spGroupId);
-    const web: string = input.siteUrl || this._webUrl; // an SP site group can live on a different site than the page
+    const web: string = this._sameTenantOrPageWeb(input.siteUrl); // SP groups may live on another (same-tenant) site
 
     if (input.action === 'Add Member') {
       const login: string | undefined = input.member.userPrincipalName || input.member.mail;
@@ -502,6 +503,20 @@ export class AccountManagementService {
       throw new Error(message);
     }
     return text ? JSON.parse(text) : undefined;
+  }
+
+  /** Use the override site only when it's the same tenant (same host) as the page; else the page web. */
+  private _sameTenantOrPageWeb(siteUrl: string | undefined): string {
+    if (!siteUrl) {
+      return this._webUrl;
+    }
+    try {
+      return new URL(siteUrl).host.toLowerCase() === new URL(this._webUrl).host.toLowerCase()
+        ? siteUrl
+        : this._webUrl;
+    } catch {
+      return this._webUrl;
+    }
   }
 
   private _delay(ms: number): Promise<void> {

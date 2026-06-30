@@ -21,7 +21,6 @@ import {
   Print20Regular,
   Warning20Regular
 } from '@fluentui/react-icons';
-import { LivePersona } from '@pnp/spfx-controls-react/lib/LivePersona';
 import { buildFluentTheme } from './theme';
 import styles from './AccountManagement.module.scss';
 import { IAccountManagementProps } from './IAccountManagementProps';
@@ -640,15 +639,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     win.document.close();
   };
 
-  const renderPersona = (user: IUser, inner: JSX.Element): JSX.Element => {
-    const upn: string = user.userPrincipalName || user.mail || '';
-    if (!upn) {
-      return inner;
-    }
-    // ServiceScope is duplicated under @pnp's nested sp-core-library; structurally identical at runtime.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return <LivePersona upn={upn} serviceScope={props.context.serviceScope as any} template={inner} />;
-  };
+  // LivePersona (hover profile card) was removed to drop the @pnp/spfx-controls-react dependency;
+  // each row already shows the member's name, email, and title.
+  const renderPersona = (inner: JSX.Element): JSX.Element => inner;
 
   const versionBadge: JSX.Element = (
     <div className={styles.diagnosticBadge}>365 Account Management v{props.buildVersion}</div>
@@ -970,7 +963,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                   <div className={styles.memberRow} key={`own-${o.id}`}>
                                     <div className={styles.personaWrap}>
                                       {renderPersona(
-                                        o,
                                         <span className={styles.persona}>
                                           <span className={styles.avatar}>{initials(o.displayName)}</span>
                                           <span className={styles.memberDetails}>
@@ -1051,7 +1043,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                               <div className={styles.memberRow} key={m.id}>
                                 <div className={styles.personaWrap}>
                                   {renderPersona(
-                                    m,
                                     <span className={styles.persona}>
                                       <span className={styles.avatar}>{initials(m.displayName)}</span>
                                       <span className={styles.memberDetails}>

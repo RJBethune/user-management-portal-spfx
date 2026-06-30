@@ -52,7 +52,7 @@ export class GraphService {
 
   /** DEV mock: read members of a SharePoint site group via REST, mapped to the IUser shape. */
   private async _getSharePointGroupMembers(spGroupId: string, siteUrl?: string): Promise<IUser[]> {
-    const web: string = siteUrl || this._context.pageContext.web.absoluteUrl;
+    const web: string = this._sameTenantWeb(siteUrl);
     const url: string =
       `${web}/_api/web/sitegroups(${encodeURIComponent(spGroupId)})/users` +
       `?$select=Id,Title,Email,LoginName,UserPrincipalName,PrincipalType&$top=999`;
@@ -153,6 +153,19 @@ export class GraphService {
   }
 
   /** Strip the absolute host + version segment from an @odata.nextLink so it can be re-fed to .api(). */
+  /** Use the override site only when it's the same tenant (same host) as the page; else the page web. */
+  private _sameTenantWeb(siteUrl: string | undefined): string {
+    const pageWeb: string = this._context.pageContext.web.absoluteUrl;
+    if (!siteUrl) {
+      return pageWeb;
+    }
+    try {
+      return new URL(siteUrl).host.toLowerCase() === new URL(pageWeb).host.toLowerCase() ? siteUrl : pageWeb;
+    } catch {
+      return pageWeb;
+    }
+  }
+
   private _toGraphApiPath(value: string): string {
     if (value.indexOf('https://') !== 0) {
       return value;

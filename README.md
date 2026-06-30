@@ -17,7 +17,12 @@ The web part holds **read-only** Graph scopes (`GroupMember.Read.All`, `User.Rea
 search to `User.Read.All` for production); all O365 writes are delegated to the flow.
 
 Authorization is data-driven via a SharePoint **Authorized Admins** list (per user → office), enforced
-client-side for display and **re-checked server-side by the flow** on the request item's `Created By`.
+client-side for display and **re-checked server-side by the flow** on the request item's `Created By` —
+that server-side re-check applies to the **O365 (Request + flow)** path. The **SharePoint-group (Direct
+REST) path has no flow**: those changes run as the signed-in user and are bounded by that user's own
+SharePoint permissions on the target site, so the Authorized Admins list gates the **UI**, not the
+SharePoint API. Treat the Authorized Admins, Group, and Site-Permissions lists as **privileged,
+admin-managed configuration** — their `SiteUrl` values are trusted, and only same-tenant sites are used.
 
 ## Required SharePoint lists
 
