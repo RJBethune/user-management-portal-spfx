@@ -22,13 +22,13 @@ export class GraphService {
   }
 
   /** Members of a group. O365 group (GUID) -> Graph; SharePoint site group (int) -> SharePoint REST. */
-  public async getGroupMembers(groupId: string): Promise<IUser[]> {
+  public async getGroupMembers(groupId: string, siteUrl?: string): Promise<IUser[]> {
     if (!groupId) {
       throw new Error('The selected group record is missing the Microsoft 365 GroupId value.');
     }
 
     if (isSharePointGroup(groupId)) {
-      return this._getSharePointGroupMembers(groupId);
+      return this._getSharePointGroupMembers(groupId, siteUrl);
     }
 
     try {
@@ -51,8 +51,8 @@ export class GraphService {
   }
 
   /** DEV mock: read members of a SharePoint site group via REST, mapped to the IUser shape. */
-  private async _getSharePointGroupMembers(spGroupId: string): Promise<IUser[]> {
-    const web: string = this._context.pageContext.web.absoluteUrl;
+  private async _getSharePointGroupMembers(spGroupId: string, siteUrl?: string): Promise<IUser[]> {
+    const web: string = siteUrl || this._context.pageContext.web.absoluteUrl;
     const url: string =
       `${web}/_api/web/sitegroups(${encodeURIComponent(spGroupId)})/users` +
       `?$select=Id,Title,Email,LoginName,UserPrincipalName,PrincipalType&$top=999`;
@@ -79,7 +79,11 @@ export class GraphService {
       .sort(byDisplayName);
   }
 
-  /** Directory search (tenant-wide; works in DEV and PROD regardless of group type). */
+  /**
+   * Directory search across the whole tenant (Graph /users?$search). By design this surfaces ANY directory
+   * user to an authorized admin (so they can be added to a group) and shows profile details via the
+   * LivePersona card — a deliberate data-exposure decision. Works in DEV and PROD regardless of group type.
+   */
   public async searchUsers(query: string): Promise<IUser[]> {
     const term: string = (query || '').trim();
     if (term.length < 2) {

@@ -77,10 +77,14 @@
   text-align: left;
   width: 100%;
 
-  &:focus-visible,
   &:hover {
     background: #f5f5f5;
-    outline: none;
+  }
+
+  &:focus-visible {
+    background: #f5f5f5;
+    outline: 2px solid #2564cf;
+    outline-offset: -2px;
   }
 }
 
@@ -194,10 +198,14 @@
     overflow-wrap: anywhere;
   }
 
-  &:focus-visible,
   &:hover {
     border-color: #d2e3ff;
-    outline: none;
+  }
+
+  &:focus-visible {
+    border-color: #d2e3ff;
+    outline: 2px solid #2564cf;
+    outline-offset: 1px;
   }
 }
 
@@ -256,7 +264,7 @@
   border-radius: 10px;
   display: inline-block;
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
   padding: 2px 8px;
 }
@@ -273,7 +281,7 @@
 
 .statusPending {
   background: #fff4ce;
-  color: #797673;
+  color: #6b5900;
 }
 
 .membersHeader,

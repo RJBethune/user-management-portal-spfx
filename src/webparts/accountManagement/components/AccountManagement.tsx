@@ -240,9 +240,16 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     }
   };
 
-  // Load authorized groups on mount.
+  // (Re)load authorized groups on mount and whenever the list config or office scope changes, so
+  // property-pane edits take effect without a full page reload.
+  const listConfigKey: string = JSON.stringify(props.listConfig);
   React.useEffect(() => {
     let cancelled: boolean = false;
+    // Rebuild the service so it queries the (possibly renamed) lists, and reset per-card state.
+    spService.current = new AccountManagementService(props.context, props.listConfig);
+    setLoading(true);
+    setTopError(undefined);
+    setCards({});
     (async (): Promise<void> => {
       try {
         diag('365 Account Management diagnostic loading authorized groups');
@@ -274,7 +281,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [listConfigKey, props.visibleOffices]);
 
   // Fetch the real M365 group photo for each O365 group; groups without one fall back to a colored tile.
   React.useEffect(() => {
@@ -300,7 +307,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const loadMembers = async (group: IOfficeGroup): Promise<void> => {
     updateCard(group.id, { membersLoading: true, memberError: undefined, members: undefined, memberFilter: undefined });
     try {
-      const members: IUser[] = await graphService.current.getGroupMembers(group.groupId);
+      const members: IUser[] = await graphService.current.getGroupMembers(group.groupId, group.siteUrl);
       updateCard(group.id, { members: members, membersLoading: false });
     } catch (err) {
       console.error('365 Account Management failed to load group members.', { error: err });
@@ -438,8 +445,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         loadRecent().catch(() => undefined);
       })
       .catch(() => {
-        // Timed out or errored mid-poll — the flow may still finish; leave the optimistic state and
-        // let the recent-requests panel reflect the latest status.
+        // Timed out or errored mid-poll — re-read the member list so we stop trusting the optimistic state,
+        // and refresh recent so the (now possibly stale-Pending -> Error) status shows.
+        loadMembers(group).catch(() => undefined);
         loadRecent().catch(() => undefined);
       });
   };
@@ -459,9 +467,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     try {
       if (isSharePointGroup(group.groupId)) {
         updateCard(group.id, { processingMessage: 'Updating SharePoint group...' });
-        await spService.current.changeSharePointGroupMembership({ action, spGroupId: group.groupId, member });
-        // Write a who/why audit record for the direct SP change (best-effort; the flow skips it).
-        await spService.current.recordCompletedChange({ action, group, member, justification });
+        await spService.current.changeSharePointGroupMembership({ action, spGroupId: group.groupId, member, siteUrl: group.siteUrl });
+        // Write a who/why audit record for the direct SP change; surface it if the audit write fails.
+        const audited: boolean = await spService.current.recordCompletedChange({ action, group, member, justification });
         updateCard(group.id, {
           processing: false,
           processingMessage: undefined,
@@ -469,7 +477,12 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           directoryQuery: '',
           directoryResults: [],
           justification: undefined,
-          alert: { type: 'success', text: 'Membership updated.' }
+          alert: audited
+            ? { type: 'success', text: 'Membership updated.' }
+            : {
+                type: 'warning',
+                text: 'Membership updated, but the audit record could not be written — notify an administrator.'
+              }
         });
         loadRecent().catch(() => undefined);
         // SharePoint REST is read-after-write consistent, so re-reading reflects the change.
@@ -556,7 +569,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         let members: IUser[] | undefined = cards[g.id] && cards[g.id].members;
         if (!members) {
           try {
-            members = await graphService.current.getGroupMembers(g.groupId);
+            members = await graphService.current.getGroupMembers(g.groupId, g.siteUrl);
           } catch {
             members = [];
           }

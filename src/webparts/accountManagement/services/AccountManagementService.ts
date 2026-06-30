@@ -137,7 +137,7 @@ export class AccountManagementService {
    * Audit record for a SharePoint-group change that was applied directly (no flow).
    * Written as Completed so the flow skips it (not Pending); best-effort so it never blocks the change.
    */
-  public async recordCompletedChange(input: IMembershipChangeInput): Promise<void> {
+  public async recordCompletedChange(input: IMembershipChangeInput): Promise<boolean> {
     try {
       const now: string = new Date().toISOString();
       const payload: any = {
@@ -160,8 +160,10 @@ export class AccountManagementService {
       }
       payload.RequestedById = await this._currentUserId(); // Person column "RequestedBy" = the signed-in initiator
       await this._postRequestItem(payload);
+      return true;
     } catch (e) {
       console.warn('365 Account Management: could not write the SharePoint-change audit record.', e);
+      return false;
     }
   }
 
@@ -193,8 +195,10 @@ export class AccountManagementService {
     action: MembershipAction;
     spGroupId: string;
     member: IUser;
+    siteUrl?: string;
   }): Promise<void> {
     const gid: string = encodeURIComponent(input.spGroupId);
+    const web: string = input.siteUrl || this._webUrl; // an SP site group can live on a different site than the page
 
     if (input.action === 'Add Member') {
       const login: string | undefined = input.member.userPrincipalName || input.member.mail;
@@ -205,7 +209,7 @@ export class AccountManagementService {
       // Hand-built "i:0#.f|membership|<upn>" claims frequently 400 ("user does not exist or is not unique").
       let loginName: string = `i:0#.f|membership|${login}`;
       try {
-        const ensured: any = await this._post(`${this._webUrl}/_api/web/ensureuser`, { logonName: login });
+        const ensured: any = await this._post(`${web}/_api/web/ensureuser`, { logonName: login });
         if (ensured && ensured.LoginName) {
           loginName = ensured.LoginName;
         }
@@ -214,14 +218,14 @@ export class AccountManagementService {
       }
       diag(`${DIAG} SharePoint group add`, { spGroupId: input.spGroupId, loginName });
       await this._postSiteGroup(
-        `${this._webUrl}/_api/web/sitegroups(${gid})/users`,
+        `${web}/_api/web/sitegroups(${gid})/users`,
         { __metadata: { type: 'SP.User' }, LoginName: loginName },
         'Add to SharePoint group'
       );
     } else {
       diag(`${DIAG} SharePoint group remove`, { spGroupId: input.spGroupId });
       await this._postSiteGroup(
-        `${this._webUrl}/_api/web/sitegroups(${gid})/users/removebyid(${encodeURIComponent(input.member.id)})`,
+        `${web}/_api/web/sitegroups(${gid})/users/removebyid(${encodeURIComponent(input.member.id)})`,
         undefined,
         'Remove from SharePoint group'
       );
