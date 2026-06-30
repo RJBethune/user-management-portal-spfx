@@ -63,7 +63,11 @@ export class GraphService {
       { headers: { Accept: 'application/json;odata=nometadata' } }
     );
     if (!resp.ok) {
-      throw new Error(`Unable to load SharePoint group members (HTTP ${resp.status}).`);
+      const detail: string = await this._readSpError(resp);
+      throw new Error(
+        `Couldn't load this group's members — ${detail} ` +
+          `Check that the group's Site URL (${web}) is a site that exists, contains site group ${spGroupId}, and that you have access to it.`
+      );
     }
     const data: any = await resp.json();
     const value: any[] = (data && data.value) || [];
@@ -79,10 +83,23 @@ export class GraphService {
       .sort(byDisplayName);
   }
 
+  /** Extract SharePoint's own error text (status + message) from a failed REST response. */
+  private async _readSpError(resp: SPHttpClientResponse): Promise<string> {
+    let message: string = '';
+    try {
+      const body: any = await resp.json();
+      const m: any = body && body.error && body.error.message;
+      message = (m && typeof m === 'object' ? m.value : m) || '';
+    } catch {
+      message = '';
+    }
+    return `HTTP ${resp.status}${message ? ': ' + message : ''}.`;
+  }
+
   /**
    * Directory search across the whole tenant (Graph /users?$search). By design this surfaces ANY directory
-   * user to an authorized admin (so they can be added to a group) and shows profile details via the
-   * LivePersona card — a deliberate data-exposure decision. Works in DEV and PROD regardless of group type.
+   * user to an authorized admin (so they can be added to a group). This is a deliberate, tenant-wide
+   * data-exposure decision. Works in DEV and PROD regardless of group type.
    */
   public async searchUsers(query: string): Promise<IUser[]> {
     const term: string = (query || '').trim();
@@ -152,20 +169,26 @@ export class GraphService {
     };
   }
 
-  /** Strip the absolute host + version segment from an @odata.nextLink so it can be re-fed to .api(). */
   /** Use the override site only when it's the same tenant (same host) as the page; else the page web. */
   private _sameTenantWeb(siteUrl: string | undefined): string {
-    const pageWeb: string = this._context.pageContext.web.absoluteUrl;
+    const pageWeb: string = this._context.pageContext.web.absoluteUrl.replace(/\/+$/, '');
     if (!siteUrl) {
       return pageWeb;
     }
+    const site: string = siteUrl.replace(/\/+$/, '');
     try {
-      return new URL(siteUrl).host.toLowerCase() === new URL(pageWeb).host.toLowerCase() ? siteUrl : pageWeb;
+      if (new URL(site).host.toLowerCase() === new URL(pageWeb).host.toLowerCase()) {
+        return site;
+      }
+      diag(`${DIAG} group SiteUrl is a different host than the page; ignoring it and using the page web`, { siteUrl });
+      return pageWeb;
     } catch {
+      diag(`${DIAG} group SiteUrl could not be parsed; using the page web`, { siteUrl });
       return pageWeb;
     }
   }
 
+  /** Strip the absolute host + version segment from an @odata.nextLink so it can be re-fed to .api(). */
   private _toGraphApiPath(value: string): string {
     if (value.indexOf('https://') !== 0) {
       return value;

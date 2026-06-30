@@ -507,15 +507,20 @@ export class AccountManagementService {
 
   /** Use the override site only when it's the same tenant (same host) as the page; else the page web. */
   private _sameTenantOrPageWeb(siteUrl: string | undefined): string {
+    const pageWeb: string = this._webUrl.replace(/\/+$/, '');
     if (!siteUrl) {
-      return this._webUrl;
+      return pageWeb;
     }
+    const site: string = siteUrl.replace(/\/+$/, '');
     try {
-      return new URL(siteUrl).host.toLowerCase() === new URL(this._webUrl).host.toLowerCase()
-        ? siteUrl
-        : this._webUrl;
+      if (new URL(site).host.toLowerCase() === new URL(pageWeb).host.toLowerCase()) {
+        return site;
+      }
+      diag(`${DIAG} group SiteUrl is a different host than the page; ignoring it and using the page web`, { siteUrl });
+      return pageWeb;
     } catch {
-      return this._webUrl;
+      diag(`${DIAG} group SiteUrl could not be parsed; using the page web`, { siteUrl });
+      return pageWeb;
     }
   }
 
