@@ -9,7 +9,13 @@ import {
   Field,
   Textarea,
   Link,
-  Button
+  Button,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@fluentui/react-components';
 import {
   ChevronUp20Regular,
@@ -20,7 +26,10 @@ import {
   SubtractCircle20Regular,
   Dismiss20Regular,
   Print20Regular,
-  Warning20Regular
+  Warning20Regular,
+  Clock16Regular,
+  CheckmarkCircle16Regular,
+  ErrorCircle16Regular
 } from '@fluentui/react-icons';
 import { buildFluentTheme } from './theme';
 import styles from './AccountManagement.module.scss';
@@ -838,41 +847,61 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           </MessageBar>
                         )}
 
-                        {card.confirmRemove && (
-                          <div className={styles.confirmBox}>
-                            <div className={styles.confirmText}>
-                              <Warning20Regular className={styles.confirmIcon} />
-                              <span>
-                                Remove <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
-                                {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() === currentUserKey
-                                  ? ' This is your own access.'
-                                  : ''}
-                                {(card.members ? card.members.length : 0) === 1 ? ' This is the last member of the group.' : ''}
-                              </span>
-                            </div>
-                            {props.requireJustification && (
-                              <Field label="Reason for this change" required>
-                                <Textarea
-                                  rows={2}
-                                  value={card.justification || ''}
-                                  placeholder="Why are you making this change? (recorded with the request)"
-                                  disabled={card.processing}
-                                  onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
-                                />
-                              </Field>
-                            )}
-                            <div className={styles.confirmActions}>
-                              <Button
-                                appearance="primary"
-                                disabled={justificationMissing}
-                                onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
-                              >
-                                Remove
-                              </Button>
-                              <Button onClick={() => updateCard(group.id, { confirmRemove: undefined })}>Cancel</Button>
-                            </div>
-                          </div>
-                        )}
+                        <Dialog
+                          open={!!card.confirmRemove}
+                          onOpenChange={(_, data) => {
+                            if (!data.open) {
+                              updateCard(group.id, { confirmRemove: undefined });
+                            }
+                          }}
+                        >
+                          <DialogSurface>
+                            <DialogBody>
+                              <DialogTitle>
+                                Remove {card.confirmRemove && card.confirmRemove.isGroup ? 'group' : 'member'}
+                              </DialogTitle>
+                              <DialogContent>
+                                <div className={styles.confirmText}>
+                                  <Warning20Regular className={styles.confirmIcon} />
+                                  <span>
+                                    Remove {card.confirmRemove && card.confirmRemove.isGroup ? 'the group ' : ''}
+                                    <strong>{card.confirmRemove ? card.confirmRemove.displayName : ''}</strong> from{' '}
+                                    {group.title}?
+                                    {card.confirmRemove &&
+                                    (card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() ===
+                                      currentUserKey
+                                      ? ' This is your own access.'
+                                      : ''}
+                                    {(card.members ? card.members.length : 0) === 1
+                                      ? ' This is the last member of the group.'
+                                      : ''}
+                                  </span>
+                                </div>
+                                {props.requireJustification && (
+                                  <Field label="Reason for this change" required>
+                                    <Textarea
+                                      rows={2}
+                                      value={card.justification || ''}
+                                      placeholder="Why are you making this change? (recorded with the request)"
+                                      disabled={card.processing}
+                                      onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
+                                    />
+                                  </Field>
+                                )}
+                              </DialogContent>
+                              <DialogActions>
+                                <Button
+                                  appearance="primary"
+                                  disabled={justificationMissing}
+                                  onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
+                                >
+                                  Remove
+                                </Button>
+                                <Button onClick={() => updateCard(group.id, { confirmRemove: undefined })}>Cancel</Button>
+                              </DialogActions>
+                            </DialogBody>
+                          </DialogSurface>
+                        </Dialog>
 
                         {card.processing && (
                           <div className={styles.processing} aria-live="polite">
@@ -890,6 +919,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                               onChange={(_, data) => onDirectoryChange(group, data.value || '')}
                               disabled={card.processing}
                             />
+                            {isSharePointGroup(group.groupId) && (
+                              <p className={styles.emptyText}>You can add individual users only (not groups).</p>
+                            )}
                             {card.directoryLoading && <Spinner size="small" label="Searching..." />}
                             {card.directoryCapped && !card.directoryLoading && (
                               <p className={styles.emptyText}>Showing the first 25 matches — keep typing to narrow.</p>
@@ -1125,6 +1157,13 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                               : styles.statusPending
                                           }`}
                                         >
+                                          {displayStatus === 'Completed' ? (
+                                            <CheckmarkCircle16Regular />
+                                          ) : displayStatus === 'Failed' || displayStatus === 'Error' ? (
+                                            <ErrorCircle16Regular />
+                                          ) : (
+                                            <Clock16Regular />
+                                          )}
                                           {displayStatus}
                                         </span>
                                         <span className={styles.memberDetails}>

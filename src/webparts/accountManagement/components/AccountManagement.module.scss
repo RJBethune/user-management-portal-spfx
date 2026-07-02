@@ -263,11 +263,13 @@
 }
 
 .statusPill {
+  align-items: center;
   border-radius: 10px;
-  display: inline-block;
+  display: inline-flex;
   flex: 0 0 auto;
   font-size: 12px;
   font-weight: 650;
+  gap: 4px;
   padding: 2px 8px;
 }
 
