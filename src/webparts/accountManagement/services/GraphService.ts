@@ -72,12 +72,14 @@ export class GraphService {
     const data: any = await resp.json();
     const value: any[] = (data && data.value) || [];
     return value
-      .filter((u: any) => u.PrincipalType === 1) // 1 = User; drop nested SharePoint/security groups
+      // Keep users AND nested group principals so nested groups are visible, not silently hidden.
+      // PrincipalType: 1=User, 2=Distribution list, 4=Security/O365 group, 8=SharePoint group.
       .map((u: any): IUser => ({
-        id: String(u.Id), // SharePoint site-user Id -> used by removebyid on the DEV remove path
-        displayName: u.Title || u.UserPrincipalName || u.Email || 'Unknown user',
+        id: String(u.Id), // SharePoint site-user Id -> used by removebyid on the remove path
+        displayName: u.Title || u.UserPrincipalName || u.Email || 'Unknown principal',
         mail: u.Email,
-        userPrincipalName: u.UserPrincipalName || u.LoginName
+        userPrincipalName: u.UserPrincipalName || u.LoginName,
+        isGroup: u.PrincipalType !== 1
       }))
       .filter((u: IUser) => !!u.displayName)
       .sort(byDisplayName);

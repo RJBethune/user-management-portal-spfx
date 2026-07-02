@@ -15,6 +15,7 @@ import {
   ChevronUp20Regular,
   ChevronDown20Regular,
   PersonAdd20Regular,
+  People20Regular,
   ArrowSync20Regular,
   SubtractCircle20Regular,
   Dismiss20Regular,
@@ -1044,10 +1045,18 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 <div className={styles.personaWrap}>
                                   {renderPersona(
                                     <span className={styles.persona}>
-                                      <span className={styles.avatar}>{initials(m.displayName)}</span>
+                                      <span className={styles.avatar}>
+                                        {m.isGroup ? <People20Regular /> : initials(m.displayName)}
+                                      </span>
                                       <span className={styles.memberDetails}>
                                         <strong>{m.displayName}</strong>
-                                        <span>{m.jobTitle || m.mail || m.userPrincipalName}</span>
+                                        <span>
+                                          {m.isGroup
+                                            ? m.mail
+                                              ? `Group · ${m.mail}`
+                                              : 'Group'
+                                            : m.jobTitle || m.mail || m.userPrincipalName}
+                                        </span>
                                       </span>
                                     </span>
                                   )}

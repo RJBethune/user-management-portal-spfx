@@ -6,6 +6,8 @@ export interface IUser {
   mail?: string;
   userPrincipalName?: string;
   jobTitle?: string;
+  /** True when this member is itself a group (security/O365/SharePoint group) nested in a SharePoint site group. */
+  isGroup?: boolean;
 }
 
 export interface IOfficeGroup {
