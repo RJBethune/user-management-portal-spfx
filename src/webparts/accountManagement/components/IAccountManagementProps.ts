@@ -20,6 +20,8 @@ export interface IAccountManagementProps {
   startCollapsed: boolean;
   /** Require a justification note before Add/Remove (captured into the request item). */
   requireJustification: boolean;
+  /** Load and show real M365 group photos (lazily, on expand); off = always use the initials tile. */
+  showGroupPhotos: boolean;
   /** SharePoint section theme, mapped onto Fluent v9 tokens (supports dark/inverted sections). */
   sectionTheme?: IReadonlyTheme;
 }

@@ -328,7 +328,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     }
     const card: ICardState = cards[selectedGroupId] || {};
     // Fetch the M365 group photo lazily, on expand (was eager for EVERY group — a throttling risk at 30+ groups).
-    if (!isSharePointGroup(group.groupId) && !groupPhotos[group.id]) {
+    if (props.showGroupPhotos && !isSharePointGroup(group.groupId) && !groupPhotos[group.id]) {
       const gid: number = group.id;
       graphService.current
         .getGroupPhotoUrl(group.groupId)

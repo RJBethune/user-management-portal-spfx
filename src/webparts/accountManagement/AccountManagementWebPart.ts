@@ -31,6 +31,7 @@ export interface IAccountManagementWebPartProps {
   pollTimeoutSeconds: number;
   startCollapsed: boolean;
   requireJustification: boolean;
+  showGroupPhotos: boolean;
   verboseLogging: boolean;
 }
 
@@ -69,7 +70,7 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.5.2';
+  public static readonly buildVersion: string = '1.5.3';
 
   private _theme: IReadonlyTheme | undefined;
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
@@ -78,6 +79,9 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
   protected onInit(): Promise<void> {
     const themeProvider: ThemeProvider = this.context.serviceScope.consume(ThemeProvider.serviceKey);
     this._theme = themeProvider.tryGetTheme();
+    if (this.properties.showGroupPhotos === undefined) {
+      this.properties.showGroupPhotos = true; // default ON; preserves prior behavior for existing instances
+    }
     this._registerDiagnostics();
     console.info(`365 Account Management web part ${AccountManagementWebPart.buildVersion} loaded`, {
       componentId: this.context.manifest.id,
@@ -118,7 +122,8 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
           helpUrl: this.properties.helpUrl || '',
           startCollapsed: !!this.properties.startCollapsed,
           sectionTheme: this._theme,
-          requireJustification: !!this.properties.requireJustification
+          requireJustification: !!this.properties.requireJustification,
+          showGroupPhotos: this.properties.showGroupPhotos !== false
         })
       );
       ReactDom.render(element, this.domElement);
@@ -210,6 +215,11 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
                   label: 'Start office cards collapsed',
                   onText: 'Collapsed',
                   offText: 'First office expanded'
+                }),
+                PropertyPaneToggle('showGroupPhotos', {
+                  label: 'Show Microsoft 365 group photos',
+                  onText: 'On',
+                  offText: 'Off (use initials tile)'
                 }),
                 PropertyPaneToggle('requireJustification', {
                   label: 'Require a reason for each change',

@@ -28,6 +28,7 @@
         "visibleOffices": "",
         "pollTimeoutSeconds": 120,
         "startCollapsed": true,
+        "showGroupPhotos": true,
         "requireJustification": false,
         "verboseLogging": false
       }
