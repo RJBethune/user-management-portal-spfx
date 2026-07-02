@@ -26,6 +26,7 @@ export interface IAccountManagementWebPartProps {
   groupListTitle: string;
   authorizedAdminsListTitle: string;
   sitePermissionsListTitle: string;
+  listSiteUrl: string;
   visibleOffices: string;
   pollTimeoutSeconds: number;
   startCollapsed: boolean;
@@ -68,7 +69,7 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.4.1';
+  public static readonly buildVersion: string = '1.5.0';
 
   private _theme: IReadonlyTheme | undefined;
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
@@ -94,7 +95,8 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
         authorizedAdminsListTitle:
           this.properties.authorizedAdminsListTitle || DEFAULT_LIST_CONFIG.authorizedAdminsListTitle,
         sitePermissionsListTitle:
-          this.properties.sitePermissionsListTitle || DEFAULT_LIST_CONFIG.sitePermissionsListTitle
+          this.properties.sitePermissionsListTitle || DEFAULT_LIST_CONFIG.sitePermissionsListTitle,
+        listSiteUrl: this.properties.listSiteUrl || ''
       };
       const seconds: number =
         this.properties.pollTimeoutSeconds && this.properties.pollTimeoutSeconds > 0
@@ -175,6 +177,11 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
             {
               groupName: 'Data source (lists)',
               groupFields: [
+                PropertyPaneTextField('listSiteUrl', {
+                  label: 'List site URL (optional)',
+                  description:
+                    'Absolute URL of the site holding the four lists (e.g. the site-collection root). Blank = the current site. Set this to run the web part on any page while reading one central set of lists. Must be in this tenant.'
+                }),
                 PropertyPaneTextField('groupListTitle', { label: 'Group (offices) list title' }),
                 PropertyPaneTextField('authorizedAdminsListTitle', { label: 'Authorized Admins list title' }),
                 PropertyPaneTextField('requestListTitle', {

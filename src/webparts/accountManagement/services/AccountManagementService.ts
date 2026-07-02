@@ -23,6 +23,8 @@ export interface IListConfig {
   groupListTitle: string;
   authorizedAdminsListTitle: string;
   sitePermissionsListTitle: string;
+  /** Optional: absolute URL of the site that holds the four lists. Blank = the current page's site. */
+  listSiteUrl?: string;
 }
 
 export const DEFAULT_LIST_CONFIG: IListConfig = {
@@ -39,15 +41,36 @@ export class AccountManagementService {
 
   public constructor(context: WebPartContext, config?: Partial<IListConfig>) {
     this._context = context;
-    this._webUrl = context.pageContext.web.absoluteUrl;
     this._config = {
       requestListTitle: (config && config.requestListTitle) || DEFAULT_LIST_CONFIG.requestListTitle,
       groupListTitle: (config && config.groupListTitle) || DEFAULT_LIST_CONFIG.groupListTitle,
       authorizedAdminsListTitle:
         (config && config.authorizedAdminsListTitle) || DEFAULT_LIST_CONFIG.authorizedAdminsListTitle,
       sitePermissionsListTitle:
-        (config && config.sitePermissionsListTitle) || DEFAULT_LIST_CONFIG.sitePermissionsListTitle
+        (config && config.sitePermissionsListTitle) || DEFAULT_LIST_CONFIG.sitePermissionsListTitle,
+      listSiteUrl: (config && config.listSiteUrl) || ''
     };
+    // The four lists can live on ONE central site so the web part works on any page in the site
+    // collection. Honor an explicit List site URL only when it is the same tenant (same host) as the
+    // page; otherwise fall back to the current site.
+    this._webUrl = AccountManagementService._sameHostOrDefault(
+      this._config.listSiteUrl,
+      context.pageContext.web.absoluteUrl
+    );
+  }
+
+  /** Return `candidate` (trimmed) when it is a same-host URL as `fallback`; otherwise `fallback`. */
+  private static _sameHostOrDefault(candidate: string | undefined, fallback: string): string {
+    const base: string = fallback.replace(/\/+$/, '');
+    if (!candidate) {
+      return base;
+    }
+    const site: string = candidate.replace(/\/+$/, '');
+    try {
+      return new URL(site).host.toLowerCase() === new URL(base).host.toLowerCase() ? site : base;
+    } catch {
+      return base;
+    }
   }
 
   public async getAuthorizedGroups(): Promise<IOfficeGroup[]> {
