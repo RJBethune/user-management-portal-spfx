@@ -9,13 +9,7 @@ import {
   Field,
   Textarea,
   Link,
-  Button,
-  Dialog,
-  DialogSurface,
-  DialogBody,
-  DialogTitle,
-  DialogContent,
-  DialogActions
+  Button
 } from '@fluentui/react-components';
 import {
   ChevronUp20Regular,
@@ -847,61 +841,51 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           </MessageBar>
                         )}
 
-                        <Dialog
-                          open={!!card.confirmRemove}
-                          onOpenChange={(_, data) => {
-                            if (!data.open) {
-                              updateCard(group.id, { confirmRemove: undefined });
-                            }
-                          }}
-                        >
-                          <DialogSurface>
-                            <DialogBody>
-                              <DialogTitle>
-                                Remove {card.confirmRemove && card.confirmRemove.isGroup ? 'group' : 'member'}
-                              </DialogTitle>
-                              <DialogContent>
-                                <div className={styles.confirmText}>
-                                  <Warning20Regular className={styles.confirmIcon} />
-                                  <span>
-                                    Remove {card.confirmRemove && card.confirmRemove.isGroup ? 'the group ' : ''}
-                                    <strong>{card.confirmRemove ? card.confirmRemove.displayName : ''}</strong> from{' '}
-                                    {group.title}?
-                                    {card.confirmRemove &&
-                                    (card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() ===
-                                      currentUserKey
-                                      ? ' This is your own access.'
-                                      : ''}
-                                    {(card.members ? card.members.length : 0) === 1
-                                      ? ' This is the last member of the group.'
-                                      : ''}
-                                  </span>
-                                </div>
-                                {props.requireJustification && (
-                                  <Field label="Reason for this change" required>
-                                    <Textarea
-                                      rows={2}
-                                      value={card.justification || ''}
-                                      placeholder="Why are you making this change? (recorded with the request)"
-                                      disabled={card.processing}
-                                      onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
-                                    />
-                                  </Field>
-                                )}
-                              </DialogContent>
-                              <DialogActions>
-                                <Button
-                                  appearance="primary"
-                                  disabled={justificationMissing}
-                                  onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
-                                >
-                                  Remove
-                                </Button>
-                                <Button onClick={() => updateCard(group.id, { confirmRemove: undefined })}>Cancel</Button>
-                              </DialogActions>
-                            </DialogBody>
-                          </DialogSurface>
-                        </Dialog>
+                        {card.confirmRemove && (
+                          <div
+                            className={styles.confirmBox}
+                            role="group"
+                            aria-label={`Confirm removing ${card.confirmRemove.displayName}`}
+                            onKeyDown={(e: React.KeyboardEvent) => {
+                              if (e.key === 'Escape') {
+                                updateCard(group.id, { confirmRemove: undefined });
+                              }
+                            }}
+                          >
+                            <div className={styles.confirmText}>
+                              <Warning20Regular className={styles.confirmIcon} />
+                              <span>
+                                Remove {card.confirmRemove.isGroup ? 'the group ' : ''}
+                                <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
+                                {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() === currentUserKey
+                                  ? ' This is your own access.'
+                                  : ''}
+                                {(card.members ? card.members.length : 0) === 1 ? ' This is the last member of the group.' : ''}
+                              </span>
+                            </div>
+                            {props.requireJustification && (
+                              <Field label="Reason for this change" required>
+                                <Textarea
+                                  rows={2}
+                                  value={card.justification || ''}
+                                  placeholder="Why are you making this change? (recorded with the request)"
+                                  disabled={card.processing}
+                                  onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
+                                />
+                              </Field>
+                            )}
+                            <div className={styles.confirmActions}>
+                              <Button
+                                appearance="primary"
+                                disabled={justificationMissing}
+                                onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
+                              >
+                                Remove
+                              </Button>
+                              <Button onClick={() => updateCard(group.id, { confirmRemove: undefined })}>Cancel</Button>
+                            </div>
+                          </div>
+                        )}
 
                         {card.processing && (
                           <div className={styles.processing} aria-live="polite">
