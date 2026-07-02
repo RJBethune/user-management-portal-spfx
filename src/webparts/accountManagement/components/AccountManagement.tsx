@@ -28,7 +28,7 @@ import { IAccountManagementProps } from './IAccountManagementProps';
 import { GraphService } from '../services/GraphService';
 import { AccountManagementService } from '../services/AccountManagementService';
 import { IOfficeGroup, IUser, IRequestSummary, ISitePermission, MembershipAction } from '../models/types';
-import { isSharePointGroup } from '../shared/groupType';
+import { isSharePointGroup, groupKindLabel } from '../shared/groupType';
 import { getManageability, IManageability } from '../shared/manageability';
 import { friendlyError, isTimeout, requestResultText } from '../shared/errors';
 import { diag } from '../shared/log';
@@ -283,27 +283,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     };
   }, [listConfigKey, props.visibleOffices]);
 
-  // Fetch the real M365 group photo for each O365 group; groups without one fall back to a colored tile.
-  React.useEffect(() => {
-    let cancelled: boolean = false;
-    groups.forEach((g: IOfficeGroup) => {
-      if (isSharePointGroup(g.groupId)) {
-        return;
-      }
-      graphService.current
-        .getGroupPhotoUrl(g.groupId)
-        .then((url: string | undefined) => {
-          if (!cancelled && url) {
-            setGroupPhotos((prev: { [id: number]: string }) => ({ ...prev, [g.id]: url }));
-          }
-        })
-        .catch(() => undefined);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [groups]);
-
   const loadMembers = async (group: IOfficeGroup): Promise<void> => {
     updateCard(group.id, { membersLoading: true, memberError: undefined, members: undefined, memberFilter: undefined });
     try {
@@ -348,6 +327,18 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       return;
     }
     const card: ICardState = cards[selectedGroupId] || {};
+    // Fetch the M365 group photo lazily, on expand (was eager for EVERY group — a throttling risk at 30+ groups).
+    if (!isSharePointGroup(group.groupId) && !groupPhotos[group.id]) {
+      const gid: number = group.id;
+      graphService.current
+        .getGroupPhotoUrl(group.groupId)
+        .then((url: string | undefined) => {
+          if (url) {
+            setGroupPhotos((prev: { [id: number]: string }) => ({ ...prev, [gid]: url }));
+          }
+        })
+        .catch(() => undefined);
+    }
     if (!card.sitePermsLoading && !card.sitePerms) {
       loadSitePerms(group).catch(() => undefined);
     }
@@ -615,7 +606,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           : '';
         return (
           `<section><h2>${esc(sec.group.title)}</h2>` +
-          `<p class="meta">${esc(sec.group.mail || sec.group.siteTitle || sec.group.groupId)} &middot; ` +
+          `<p class="meta">${esc(sec.group.mail || sec.group.siteTitle || groupKindLabel(sec.group.groupId))} &middot; ` +
           `${sec.members.length} member${sec.members.length === 1 ? '' : 's'}</p>${owners}` +
           `<table><thead><tr><th>Name</th><th>Email</th><th>Title</th></tr></thead><tbody>${rows}</tbody></table></section>`
         );
@@ -790,7 +781,10 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                       </span>
                       <span className={styles.groupTitleBlock}>
                         <span className={styles.groupTitle}>{group.title}</span>
-                        <span className={styles.groupMeta}>{group.mail || group.siteTitle || group.groupId}</span>
+                        <span className={styles.groupMeta}>
+                          {groupKindLabel(group.groupId)}
+                          {group.mail || group.siteTitle ? ` · ${group.mail || group.siteTitle}` : ''}
+                        </span>
                       </span>
                       {expanded ? (
                         <ChevronUp20Regular className={styles.chevron} />

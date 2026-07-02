@@ -6,3 +6,8 @@
 export function isSharePointGroup(groupId: string | undefined): boolean {
   return /^\d+$/.test((groupId || '').toString().trim());
 }
+
+/** Human label for the kind of group, derived from the id format (GUID = M365, integer = SharePoint). */
+export function groupKindLabel(groupId: string | undefined): string {
+  return isSharePointGroup(groupId) ? 'SharePoint Group' : 'Microsoft 365 Group';
+}
