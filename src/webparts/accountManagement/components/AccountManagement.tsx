@@ -1113,6 +1113,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 {manage.manageable && (
                                   <Button
                                     icon={<SubtractCircle20Regular />}
+                                    className={card.processing ? undefined : styles.dangerOutlineButton}
                                     disabled={card.processing}
                                     onClick={() => updateCard(group.id, { confirmRemove: m })}
                                   >
