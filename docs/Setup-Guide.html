@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>365 Account Management — Setup Guide (Lists + Flow)</title>
+<style>
+  :root{
+    --ink:#1b1f24; --muted:#5b6570; --line:#dfe3e8; --brand:#0b4a8f; --brand-d:#083a70;
+    --code-bg:#f5f7fa; --th:#eef3fb; --zebra:#fafbfc;
+    --warn-b:#f6c445; --warn-bg:#fff8e6; --crit-b:#c50f1f; --crit-bg:#fdf3f4;
+    --info-b:#3b7ddd; --info-bg:#eef4fd; --tip-b:#2f9e44; --tip-bg:#effaf1;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;color:var(--ink);background:#f0f2f5;
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 22px 80px;background:#fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  header.top{border-bottom:3px solid var(--brand);padding-bottom:16px;margin-bottom:8px}
+  header.top h1{font-size:28px;margin:0 0 4px;color:var(--brand-d);letter-spacing:-.2px}
+  header.top .sub{color:var(--muted);font-size:15px;margin:0}
+  header.top .meta{color:var(--muted);font-size:13px;margin:8px 0 0}
+  h2{font-size:22px;color:var(--brand-d);margin:38px 0 6px;padding-top:8px;border-top:1px solid var(--line)}
+  h3{font-size:17px;margin:22px 0 6px;color:#12335c}
+  h4{font-size:15px;margin:16px 0 4px;color:#12335c}
+  p{margin:8px 0}
+  a{color:var(--brand)}
+  code{font-family:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;font-size:.9em;
+    background:var(--code-bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;
+    padding:12px 14px;overflow:auto;margin:10px 0}
+  pre code{background:none;border:0;padding:0;font-size:13px;line-height:1.5;white-space:pre}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--th);color:#12335c;font-weight:650}
+  tbody tr:nth-child(even){background:var(--zebra)}
+  td code{white-space:nowrap}
+  .pill{display:inline-block;font-size:11px;font-weight:700;line-height:1;padding:3px 7px;border-radius:20px;
+    vertical-align:middle}
+  .req{background:#fde7e9;color:#a4262c}
+  .opt{background:#e9eef5;color:#3a5470}
+  .bi{background:#e7f1ea;color:#2f6b3d}
+  .callout{border-left:4px solid var(--info-b);background:var(--info-bg);padding:12px 14px;margin:14px 0;border-radius:0 6px 6px 0}
+  .callout.warn{border-color:var(--warn-b);background:var(--warn-bg)}
+  .callout.crit{border-color:var(--crit-b);background:var(--crit-bg)}
+  .callout.tip{border-color:var(--tip-b);background:var(--tip-bg)}
+  .callout p{margin:4px 0}
+  .callout strong{color:#12335c}
+  nav.toc{background:#fafbfc;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:18px 0 6px}
+  nav.toc h2{border:0;margin:0 0 6px;padding:0;font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  nav.toc ol{margin:6px 0 0;padding-left:20px;columns:2;column-gap:28px}
+  nav.toc li{margin:3px 0;break-inside:avoid}
+  .lead{font-size:16px;color:#333}
+  .path{color:var(--muted);font-size:13px}
+  ul.tight li{margin:4px 0}
+  hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+  footer{color:var(--muted);font-size:13px;margin-top:36px;border-top:1px solid var(--line);padding-top:12px}
+  @media(max-width:700px){nav.toc ol{columns:1}}
+  @media print{
+    body{background:#fff}.wrap{box-shadow:none;max-width:none;padding:0}
+    nav.toc{break-inside:avoid}h2{break-after:avoid}table{break-inside:auto}tr{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>365 Account Management — Setup Guide</h1>
+  <p class="sub">SharePoint lists &amp; the Power Automate flow needed to run the web part.</p>
+  <p class="meta">Build the four lists by hand (no PnP in this tenant), then wire up one Power Automate flow for the O365 path. This guide is the source of truth.</p>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#overview">How it works</a></li>
+    <li><a href="#rules">5 rules before you start</a></li>
+    <li><a href="#l1">List 1 — Managed Groups</a></li>
+    <li><a href="#l2">List 2 — Group Membership Requests</a></li>
+    <li><a href="#l3">List 3 — Authorized Admins</a></li>
+    <li><a href="#l4">List 4 — Group Site Permissions</a></li>
+    <li><a href="#flow">The Power Automate flow</a></li>
+    <li><a href="#checklist">Final checklist</a></li>
+  </ol>
+</nav>
+
+<h2 id="overview">How it works</h2>
+<p class="lead">The web part branches on the <strong>Group ID format</strong> of each managed group:</p>
+<table>
+  <thead><tr><th>Group ID</th><th>Path</th><th>What happens</th></tr></thead>
+  <tbody>
+    <tr><td><strong>GUID</strong> (O365 / Entra group)</td><td>Request + flow</td>
+      <td>The web part writes a <code>Pending</code> row to the <em>Group Membership Requests</em> list. A <strong>Power Automate flow</strong> (elevated identity) re-checks authorization, performs the Microsoft Graph change, and writes the result back. The web part polls.</td></tr>
+    <tr><td><strong>Integer</strong> (SharePoint site group)</td><td>Direct REST</td>
+      <td>The web part changes membership directly via SharePoint REST as the signed-in user — <strong>no flow</strong>. Bounded by that user's SharePoint permissions.</td></tr>
+  </tbody>
+</table>
+<p>You need <strong>4 SharePoint lists</strong> and <strong>1 Power Automate flow</strong> (for the O365 path only). List titles are configurable in the web part property pane; defaults are shown. All four lists live on one site (the "List site URL" in the property pane).</p>
+
+<h2 id="rules">5 rules before you start</h2>
+<div class="callout crit">
+  <p><strong>1. Internal column names must match EXACTLY and have NO spaces.</strong> SharePoint freezes a column's <em>internal</em> name from its display name at creation and encodes spaces as <code>_x0020_</code>. Create each column with the exact space-free name shown, <em>then</em> rename the display label if you want it prettier.</p>
+</div>
+<ul class="tight">
+  <li><strong>2. Every listed column must exist</strong> — the app <code>$select</code>s them by name; a missing one fails the whole query. Exceptions are marked <span class="pill opt">optional</span>.</li>
+  <li><strong>3. Person &amp; Lookup columns are used by their <code>…Id</code> field.</strong> Create <code>RequestedBy</code>; the app uses <code>RequestedById</code>. Don't create <code>RequestedById</code> literally.</li>
+  <li><strong>4. Don't re-create built-ins</strong> <span class="pill bi">built-in</span>: <code>Title</code>, <code>Created By</code> (Author), <code>Modified</code>, <code>ID</code>.</li>
+  <li><strong>5. List titles</strong> must match the defaults below, or be set per page in the property pane → <em>Data source (lists)</em>.</li>
+</ul>
+<p class="path">Legend — <strong>Filled by:</strong> Admin = you populate by hand · App = the web part writes it · Flow = Power Automate writes it back · System = SharePoint maintains it.</p>
+
+<h2 id="l1">List 1 — <code>Managed Groups</code></h2>
+<p class="path">Property: <code>groupListTitle</code> · One row per managed group/office · <strong>Admin-populated, read-only to the app.</strong> All columns required except <code>GroupType</code>.</p>
+<table>
+  <thead><tr><th>Column (internal name)</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>Title</code> <span class="pill bi">built-in</span></td><td>Single line of text</td><td>Group display name.</td></tr>
+    <tr><td><code>GroupId</code> <span class="pill req">required</span></td><td>Single line of text</td><td>Entra/O365 group <strong>GUID</strong> (prod) or SharePoint site-group <strong>integer</strong> (dev). The app can't act on a row without it.</td></tr>
+    <tr><td><code>Description</code></td><td>Multiple lines of text</td><td>Shown in the UI.</td></tr>
+    <tr><td><code>Mail</code></td><td>Single line of text</td><td>Group email.</td></tr>
+    <tr><td><code>MailNickname</code></td><td>Single line of text</td><td>Alias / title fallback.</td></tr>
+    <tr><td><code>Visibility</code></td><td>Single line of text</td><td>Public / Private (free text).</td></tr>
+    <tr><td><code>CreatedDateTime</code></td><td>Date and Time</td><td>Group creation date (separate from built-in <em>Created</em>).</td></tr>
+    <tr><td><code>IsTeamsConnected</code></td><td>Yes/No</td><td>Teams-connected flag.</td></tr>
+    <tr><td><code>SiteUrl</code></td><td>Hyperlink</td><td>Optional same-tenant <strong>site-collection root</strong> for SharePoint-group actions.</td></tr>
+    <tr><td><code>SiteTitle</code></td><td>Single line of text</td><td>Friendly site/group title; fallback.</td></tr>
+    <tr><td><code>GroupType</code> <span class="pill opt">optional</span></td><td>Single line of text</td><td>Optional to create — the app retries without it. Flags dynamic / distribution groups.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="l2">List 2 — <code>Group Membership Requests</code></h2>
+<p class="path">Property: <code>requestListTitle</code> · The queue <strong>and</strong> audit log for O365 changes · App writes a <code>Pending</code> row, the flow writes the result back. All columns required except <code>RequestedBy</code>.</p>
+<table>
+  <thead><tr><th>Column (internal name)</th><th>Type</th><th>Filled by</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>Title</code> <span class="pill bi">built-in</span></td><td>Single line of text</td><td>App</td><td>e.g. "Add Member: Jane Doe".</td></tr>
+    <tr><td><code>Action</code></td><td>Choice</td><td>App</td><td>Exact values: <strong>Add Member</strong>, <strong>Remove Member</strong>.</td></tr>
+    <tr><td><code>GroupId</code></td><td>Single line of text</td><td>App</td><td>Target O365 group <strong>GUID</strong>.</td></tr>
+    <tr><td><code>GroupName</code></td><td>Single line of text</td><td>App</td><td>Group display name.</td></tr>
+    <tr><td><code>MemberId</code></td><td>Single line of text</td><td>App</td><td>Member's Entra object id (GUID) — the flow uses this for the Graph call.</td></tr>
+    <tr><td><code>MemberDisplayName</code></td><td>Single line of text</td><td>App</td><td>&nbsp;</td></tr>
+    <tr><td><code>Status</code></td><td>Choice</td><td>App + Flow</td><td>Exact values: <strong>Pending</strong>, <strong>Completed</strong>, <strong>Failed</strong>. Default = <code>Pending</code>.</td></tr>
+    <tr><td><code>ResultMessage</code></td><td>Multiple lines of text</td><td>Flow</td><td>Outcome / error text.</td></tr>
+    <tr><td><code>RequestedOn</code></td><td>Date and Time</td><td>App</td><td>ISO submit timestamp.</td></tr>
+    <tr><td><code>TargetUserPrincipalName</code></td><td>Single line of text</td><td>App</td><td>Member UPN.</td></tr>
+    <tr><td><code>TargetUserEmail</code></td><td>Single line of text</td><td>App</td><td>Member email.</td></tr>
+    <tr><td><code>CorrelationId</code></td><td>Single line of text</td><td>App</td><td>GUID for app↔flow correlation.</td></tr>
+    <tr><td><code>OfficeGroupRecord</code></td><td>Lookup → <code>Managed Groups</code> (show <code>Title</code>)</td><td>App</td><td>Links the request to its group row. App writes <code>OfficeGroupRecordId</code>.</td></tr>
+    <tr><td><code>Justification</code></td><td>Multiple lines of text</td><td>App</td><td><strong>Must exist</strong> — not dropped on failure. Backs the "Require a reason" toggle.</td></tr>
+    <tr><td><code>MemberEntraId</code></td><td>Person or Group</td><td>App</td><td>Target member as a site user (REST <code>MemberEntraIdId</code>). <strong>Must exist.</strong></td></tr>
+    <tr><td><code>RequestedBy</code> <span class="pill opt">optional</span></td><td>Person or Group</td><td>App</td><td>Initiator (REST <code>RequestedById</code>). App retries without it if absent.</td></tr>
+    <tr><td><code>AuthorizationChecked</code></td><td>Yes/No</td><td>Flow</td><td>App reads.</td></tr>
+    <tr><td><code>AuthorizationResult</code></td><td>Multiple lines of text</td><td>Flow</td><td>App reads.</td></tr>
+    <tr><td><code>Created By</code> (<code>Author</code>) <span class="pill bi">built-in</span></td><td>Person</td><td>System</td><td>The flow authorizes on this. App filters recent requests by it.</td></tr>
+    <tr><td><code>Modified</code> <span class="pill bi">built-in</span></td><td>Date and Time</td><td>System</td><td>Shows when the flow last updated the row.</td></tr>
+  </tbody>
+</table>
+<div class="callout"><p><strong>Permissions:</strong> break inheritance so requesters get <em>Add-items only + read-own</em>, and only the flow identity can edit <code>Status</code> / <code>Authorization*</code>. Enable version history (the audit log). Index <code>Status</code> for the flow's Pending sweep.</p></div>
+
+<h2 id="l3">List 3 — <code>Group Management Authorized Admins</code></h2>
+<p class="path">Property: <code>authorizedAdminsListTitle</code> · Who may manage which groups · <strong>Admin-populated, read-only to the app.</strong></p>
+<div class="callout tip"><p><strong>One row per admin.</strong> <code>OfficeGroupRecord</code> is a <strong>multiple-value</strong> lookup — in a single row, select <em>all</em> the groups that admin manages. (The app also still reads the older one-row-per-group layout, so you can migrate gradually.)</p></div>
+<table>
+  <thead><tr><th>Column (internal name)</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>User</code> <span class="pill req">required</span></td><td>Person or Group (single)</td><td>The authorized admin. The app &amp; flow filter on this (REST <code>UserId</code>) — <strong>index it.</strong></td></tr>
+    <tr><td><code>OfficeGroupRecord</code> <span class="pill req">required</span></td><td>Lookup → <code>Managed Groups</code> (show <code>Title</code>), <strong>Allow multiple values ✓</strong></td><td>All groups this admin may manage — pick several in the one row. The app reads each and pulls <code>Title</code>/<code>GroupId</code>/<code>SiteTitle</code>.</td></tr>
+  </tbody>
+</table>
+<div class="callout warn">
+  <p><strong>Switching an existing list to multi-select:</strong> SharePoint won't let you toggle "Allow multiple values" on a lookup that already has data. <strong>Delete</strong> the existing <code>OfficeGroupRecord</code> column and <strong>re-create it with the same name</strong> and <em>Allow multiple values</em> checked, then consolidate to one row per admin.</p>
+</div>
+<div class="callout crit">
+  <p><strong>⚠️ This changes the flow too.</strong> The flow's server-side authorization re-check reads this list. It must test whether the requested group is <strong>in</strong> the requester's multi-value collection (see the flow section). Change the list column and the flow's check <strong>together</strong>, or O365 requests will fail authorization.</p>
+</div>
+
+<h2 id="l4">List 4 — <code>Group Site Permissions</code> <span class="pill opt">optional list</span></h2>
+<p class="path">Property: <code>sitePermissionsListTitle</code> · Feeds the "Used on these sites" panel · <strong>Admin-populated, read-only to the app.</strong> The whole list is optional; create all four columns to make the panel work. One row per (group → site).</p>
+<table>
+  <thead><tr><th>Column (internal name)</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>GroupId</code></td><td>Single line of text</td><td>The group's <strong>GUID</strong> (matches <code>Managed Groups.GroupId</code>). App filters on it — <strong>index it.</strong> Plain text, not a lookup.</td></tr>
+    <tr><td><code>SiteName</code></td><td>Single line of text</td><td>Panel label; results sorted by this — <strong>index it.</strong></td></tr>
+    <tr><td><code>SiteUrl</code></td><td>Hyperlink</td><td>Clickable site link.</td></tr>
+    <tr><td><code>Permission</code></td><td>Single line of text</td><td>e.g. Full Control / Edit / Read (free text).</td></tr>
+  </tbody>
+</table>
+
+<h2 id="flow">The Power Automate flow (O365 requests only)</h2>
+<p>SharePoint site-group changes are applied directly by the web part and never reach the flow. The flow exists purely for the <strong>O365 (GUID) group</strong> path.</p>
+
+<h3>Trigger &amp; identity</h3>
+<ul class="tight">
+  <li><strong>Trigger:</strong> <em>When an item is created</em> on <code>Group Membership Requests</code>. <strong>Concurrency = 1</strong> (serialize).</li>
+  <li><strong>Runs as:</strong> a service account that is <strong>Owner of every managed O365 group</strong>, or an app registration with application permission <strong><code>GroupMember.ReadWrite.All</code></strong>. (The web part itself holds only read scopes — this identity is the elevation.)</li>
+</ul>
+
+<h3>Fields the flow reads / writes</h3>
+<table>
+  <thead><tr><th>Reads (from the created item)</th><th>Writes back (terminal)</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>Action</code>, <code>GroupId</code> (target group), <code>MemberId</code> (member object id), <code>Author</code>/<code>AuthorId</code> (the requester — the <strong>only</strong> trusted identity), <code>CorrelationId</code>, <code>Justification</code>, member display fields.</td>
+      <td><code>Status</code> = <strong>Completed</strong> / <strong>Failed</strong> (exact casing), <code>ResultMessage</code>, <code>AuthorizationChecked</code>, <code>AuthorizationResult</code>.</td>
+    </tr>
+  </tbody>
+</table>
+<div class="callout crit"><p><strong>Never authorize on client-writable fields</strong> (<code>RequestedBy</code>/<code>RequestedById</code>, <code>OfficeGroupRecordId</code>). Only the server-stamped <code>Author</code>/<code>AuthorId</code> is trustworthy.</p></div>
+
+<h3>⭐ Authorization re-check — multi-value (the current logic)</h3>
+<p><strong>4a.</strong> Resolve the requester's SharePoint user id from the created item:</p>
+<pre><code>GET {listsSite}/_api/web/lists/getbytitle('Group Membership Requests')/items({ID})?$select=AuthorId</code></pre>
+<p><strong>4b.</strong> Read that admin's authorized groups, expanding the multi-value lookup:</p>
+<pre><code>GET {listsSite}/_api/web/lists/getbytitle('Group Management Authorized Admins')/items
+    ?$select=Id,OfficeGroupRecord/GroupId
+    &amp;$expand=OfficeGroupRecord
+    &amp;$filter=UserId eq {AuthorId}
+Header:  Accept: application/json;odata=nometadata</code></pre>
+<div class="callout"><p>Filter by <strong><code>UserId</code></strong> (the single-value <code>User</code> column — filterable, indexed), <em>not</em> the group. SharePoint can't reliably <code>$filter</code> a multi-value lookup's sub-field, so fetch the requester's row(s) and test the group membership <strong>inside the flow</strong>.</p></div>
+<p><strong>4c.</strong> Build the set of <strong>all</strong> <code>OfficeGroupRecord[].GroupId</code> across the returned row(s). Authorize <strong>iff</strong> the request's <code>GroupId</code> is in that set (case-insensitive GUID compare). Under <code>odata=nometadata</code>, <code>OfficeGroupRecord</code> is a plain <strong>array</strong> per row (<code>[ {GroupId}, {GroupId}, … ]</code>); under <code>odata=verbose</code> it is <code>{ "results": [ … ] }</code>.</p>
+<ul class="tight">
+  <li><strong>Authorized</strong> → continue; set <code>AuthorizationChecked = Yes</code>, <code>AuthorizationResult = "Authorized"</code>.</li>
+  <li><strong>Not authorized</strong> (group not in the set, or no rows) → <strong>fail closed:</strong> <code>Status = Failed</code>, <code>AuthorizationChecked = Yes</code>, a clear <code>AuthorizationResult</code>/<code>ResultMessage</code>, and <strong>make no Graph call</strong>.</li>
+</ul>
+
+<h3>Perform the change (only if authorized)</h3>
+<p>Using <code>GroupId</code> (target) and <code>MemberId</code> (member object id):</p>
+<pre><code>Add Member:
+POST https://graph.microsoft.com/v1.0/groups/{GroupId}/members/$ref
+Body: { "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/{MemberId}" }
+  → treat HTTP 400 "already exists" as success (idempotent)
+
+Remove Member:
+DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/members/{MemberId}/$ref
+  → treat HTTP 404 "not found" as success (already not a member)</code></pre>
+<p>On success → <code>Status = Completed</code>. On any other Graph error → <code>Status = Failed</code> with the error in <code>ResultMessage</code>.</p>
+
+<h3>Invariants the web part relies on</h3>
+<ol class="tight">
+  <li><strong>Authorize on <code>AuthorId</code> only</strong> (server-stamped); ignore client-writable fields for security.</li>
+  <li><strong>Fail closed</strong> — any error / missing row / ambiguity → <code>Status = Failed</code>, no Graph call.</li>
+  <li><strong>Exact <code>Status</code> casing</strong> — <code>Completed</code> / <code>Failed</code> (never <code>Complete</code>, <code>Success</code>, …). The web part polls for these literally; a mis-cased value hangs the UI until timeout.</li>
+  <li><strong>No row left <code>Pending</code></strong> — every branch writes a terminal status. A scheduled "sweep" flow that fails stale <code>Pending</code> rows is a recommended backstop.</li>
+  <li><strong>Idempotent</strong> — tolerate already-member / not-member.</li>
+</ol>
+
+<h2 id="checklist">Final checklist</h2>
+<ul class="tight">
+  <li>☐ All four lists created on one site; titles match the property-pane <em>Data source (lists)</em> values (and the <em>List site URL</em>).</li>
+  <li>☐ Every column uses the exact internal names above (no spaces); Person/Lookup columns created by base name.</li>
+  <li>☐ <code>Group Management Authorized Admins</code> → <code>OfficeGroupRecord</code> is <strong>multi-value</strong>; one row per admin.</li>
+  <li>☐ Indexes: <code>User</code> (List 3), <code>GroupId</code> + <code>SiteName</code> (List 4), <code>Status</code> (List 2).</li>
+  <li>☐ Request list hardened: requesters Add-items + read-own; only the flow edits <code>Status</code>/<code>Authorization*</code>; version history on.</li>
+  <li>☐ Power Automate flow: trigger on the request list; <strong>multi-value authorization re-check</strong>; fail-closed; exact <code>Status</code> casing.</li>
+  <li>☐ Flow identity is Owner of every managed O365 group (or app-registration <code>GroupMember.ReadWrite.All</code>).</li>
+  <li>☐ Tenant admin approved the web part's Graph scopes: <code>GroupMember.Read.All</code>, <code>User.ReadBasic.All</code>, <code>User.Read.All</code>, <code>ProfilePhoto.Read.All</code> (add <code>Group.Read.All</code> if the group search 403s).</li>
+</ul>
+
+<footer>
+  365 Account Management — setup guide for the SharePoint lists and Power Automate flow. Reflects the v1.8.0 multi-value Authorized Admins change. The web part reads list data at runtime as the signed-in user (SPHttpClient); the flow performs the elevated O365 Graph changes.
+</footer>
+
+</div>
+</body>
+</html>
