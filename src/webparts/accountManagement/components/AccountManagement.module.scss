@@ -463,24 +463,6 @@
   }
 }
 
-// Destructive outline button — a standard (secondary) button in Fluent red: red text/icon/border.
-.dangerOutlineButton {
-  border-color: #c50f1f !important;
-  color: #c50f1f !important;
-
-  &:hover {
-    background-color: #fdf3f4 !important;
-    border-color: #a4262c !important;
-    color: #a4262c !important;
-  }
-
-  &:active {
-    background-color: #f7e9ea !important;
-    border-color: #8a0b14 !important;
-    color: #8a0b14 !important;
-  }
-}
-
 .confirmText {
   align-items: flex-start;
   display: flex;

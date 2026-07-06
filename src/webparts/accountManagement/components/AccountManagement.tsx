@@ -18,7 +18,7 @@ import {
   PersonAdd20Regular,
   People20Regular,
   ArrowSync20Regular,
-  SubtractCircle20Regular,
+  Delete20Regular,
   Dismiss20Regular,
   Print20Regular,
   Warning20Regular,
@@ -1112,8 +1112,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 </div>
                                 {manage.manageable && (
                                   <Button
-                                    icon={<SubtractCircle20Regular />}
-                                    className={card.processing ? undefined : styles.dangerOutlineButton}
+                                    icon={<Delete20Regular />}
                                     disabled={card.processing}
                                     onClick={() => updateCard(group.id, { confirmRemove: m })}
                                   >
