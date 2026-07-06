@@ -444,6 +444,25 @@
   }
 }
 
+// Destructive (red) button — Fluent v9 has no "danger" appearance, so override the primary fill.
+.dangerButton {
+  background-color: #c50f1f !important;
+  border-color: #c50f1f !important;
+  color: #ffffff !important;
+
+  &:hover {
+    background-color: #a4262c !important;
+    border-color: #a4262c !important;
+    color: #ffffff !important;
+  }
+
+  &:active {
+    background-color: #8a0b14 !important;
+    border-color: #8a0b14 !important;
+    color: #ffffff !important;
+  }
+}
+
 .confirmText {
   align-items: flex-start;
   display: flex;

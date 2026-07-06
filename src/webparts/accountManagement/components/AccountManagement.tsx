@@ -885,6 +885,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                               <div className={styles.confirmActions}>
                                 <Button
                                   appearance="primary"
+                                  className={justificationMissing ? undefined : styles.dangerButton}
                                   disabled={justificationMissing}
                                   onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
                                 >
