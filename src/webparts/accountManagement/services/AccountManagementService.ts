@@ -81,13 +81,11 @@ export class AccountManagementService {
       userPrincipalName: current.UserPrincipalName || current.Email || current.Title
     });
 
-    const select: string = [
-      'Id',
-      'OfficeGroupRecord/Id',
-      'OfficeGroupRecord/Title',
-      'OfficeGroupRecord/GroupId',
-      'OfficeGroupRecord/SiteTitle'
-    ].join(',');
+    // Project ONLY the lookup's Id. A MULTI-VALUE lookup cannot project secondary fields
+    // (GroupId/SiteTitle) — SharePoint 500s with "Cannot get value for projected field ...". We don't
+    // need them here anyway: the full group record (Title/GroupId/SiteTitle/…) is fetched from the
+    // Managed Groups list via _getOfficeGroupsByIds below. Works for single- and multi-value lookups.
+    const select: string = ['Id', 'OfficeGroupRecord/Id'].join(',');
     const url: string =
       `${this._webUrl}/_api/web/lists/getbytitle('${this._config.authorizedAdminsListTitle}')/items` +
       `?$select=${select}&$expand=OfficeGroupRecord&$filter=UserId eq ${current.Id}&$top=5000`;
