@@ -28,6 +28,7 @@ import {
 import { buildFluentTheme } from './theme';
 import styles from './AccountManagement.module.scss';
 import { IAccountManagementProps } from './IAccountManagementProps';
+import { ConfirmDialog } from './ConfirmDialog';
 import { GraphService } from '../services/GraphService';
 import { AccountManagementService } from '../services/AccountManagementService';
 import { IOfficeGroup, IUser, IRequestSummary, ISitePermission, MembershipAction } from '../models/types';
@@ -841,51 +842,53 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           </MessageBar>
                         )}
 
-                        {card.confirmRemove && (
-                          <div
-                            className={styles.confirmBox}
-                            role="group"
-                            aria-label={`Confirm removing ${card.confirmRemove.displayName}`}
-                            onKeyDown={(e: React.KeyboardEvent) => {
-                              if (e.key === 'Escape') {
-                                updateCard(group.id, { confirmRemove: undefined });
-                              }
-                            }}
-                          >
-                            <div className={styles.confirmText}>
-                              <Warning20Regular className={styles.confirmIcon} />
-                              <span>
-                                Remove {card.confirmRemove.isGroup ? 'the group ' : ''}
-                                <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
-                                {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() === currentUserKey
-                                  ? ' This is your own access.'
-                                  : ''}
-                                {(card.members ? card.members.length : 0) === 1 ? ' This is the last member of the group.' : ''}
-                              </span>
-                            </div>
-                            {props.requireJustification && (
-                              <Field label="Reason for this change" required>
-                                <Textarea
-                                  rows={2}
-                                  value={card.justification || ''}
-                                  placeholder="Why are you making this change? (recorded with the request)"
-                                  disabled={card.processing}
-                                  onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
-                                />
-                              </Field>
-                            )}
-                            <div className={styles.confirmActions}>
-                              <Button
-                                appearance="primary"
-                                disabled={justificationMissing}
-                                onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
-                              >
-                                Remove
-                              </Button>
-                              <Button onClick={() => updateCard(group.id, { confirmRemove: undefined })}>Cancel</Button>
-                            </div>
-                          </div>
-                        )}
+                        <ConfirmDialog
+                          open={!!card.confirmRemove}
+                          ariaLabel={
+                            card.confirmRemove ? `Confirm removing ${card.confirmRemove.displayName}` : 'Confirm removal'
+                          }
+                          onDismiss={() => updateCard(group.id, { confirmRemove: undefined })}
+                        >
+                          {card.confirmRemove && (
+                            <React.Fragment>
+                              <div className={styles.confirmText}>
+                                <Warning20Regular className={styles.confirmIcon} />
+                                <span>
+                                  Remove {card.confirmRemove.isGroup ? 'the group ' : ''}
+                                  <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
+                                  {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() ===
+                                  currentUserKey
+                                    ? ' This is your own access.'
+                                    : ''}
+                                  {(card.members ? card.members.length : 0) === 1
+                                    ? ' This is the last member of the group.'
+                                    : ''}
+                                </span>
+                              </div>
+                              {props.requireJustification && (
+                                <Field label="Reason for this change" required>
+                                  <Textarea
+                                    rows={2}
+                                    value={card.justification || ''}
+                                    placeholder="Why are you making this change? (recorded with the request)"
+                                    disabled={card.processing}
+                                    onChange={(_, data) => updateCard(group.id, { justification: data.value || '' })}
+                                  />
+                                </Field>
+                              )}
+                              <div className={styles.confirmActions}>
+                                <Button
+                                  appearance="primary"
+                                  disabled={justificationMissing}
+                                  onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
+                                >
+                                  Remove
+                                </Button>
+                                <Button onClick={() => updateCard(group.id, { confirmRemove: undefined })}>Cancel</Button>
+                              </div>
+                            </React.Fragment>
+                          )}
+                        </ConfirmDialog>
 
                         {card.processing && (
                           <div className={styles.processing} aria-live="polite">

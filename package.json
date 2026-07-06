@@ -1,6 +1,6 @@
 {
   "name": "user-management-portal-spfx",
-  "version": "1.5.5",
+  "version": "1.6.0",
   "private": true,
   "description": "365 Account Management — manage Microsoft 365 account and group membership requests.",
   "engines": {
