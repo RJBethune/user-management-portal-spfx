@@ -134,6 +134,13 @@ One row per (group → site).
 
 *(The built-in `ID` is used internally — no action.)*
 
+> **Optional - keep it current automatically.** A nightly Power Automate flow can populate the **Auto** rows of
+> this list by scanning each managed group's site permissions, leaving hand-entered **Manual** rows untouched.
+> It adds sync-only columns the app ignores: `Source` (Choice Auto|Manual, default **Manual**), `SyncKey`
+> (indexed text), `LastSyncedRunId` (text), `SyncStatus` (Choice Active|Stale), `StaleRuns` (Number),
+> `LastSyncedUtc` (Date/Time). Full design in **PowerAutomate-Flow-Spec.md** (Nightly sync section) and
+> **Setup-Guide.html**. Set `Source = Manual` on existing rows before enabling it.
+
 ---
 
 ## After the lists exist — finish the wiring

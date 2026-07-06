@@ -82,6 +82,7 @@
     <li><a href="#l3">List 3 — Authorized Admins</a></li>
     <li><a href="#l4">List 4 — Group Site Permissions</a></li>
     <li><a href="#flow">The Power Automate flow</a></li>
+    <li><a href="#sync">Nightly sync — Site Permissions</a></li>
     <li><a href="#checklist">Final checklist</a></li>
   </ol>
 </nav>
@@ -187,6 +188,7 @@
     <tr><td><code>Permission</code></td><td>Single line of text</td><td>e.g. Full Control / Edit / Read (free text).</td></tr>
   </tbody>
 </table>
+<div class="callout tip"><p><strong>Automate it:</strong> this list can be kept current by a nightly flow instead of by hand — see <a href="#sync">Nightly sync</a>. It adds a few sync-only columns (the app ignores them) and never touches your hand-entered rows.</p></div>
 
 <h2 id="flow">The Power Automate flow (O365 requests only)</h2>
 <p>SharePoint site-group changes are applied directly by the web part and never reach the flow. The flow exists purely for the <strong>O365 (GUID) group</strong> path.</p>
@@ -246,6 +248,60 @@ DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/members/{MemberId}/$ref
   <li><strong>Idempotent</strong> — tolerate already-member / not-member.</li>
 </ol>
 
+<h2 id="sync">Nightly sync — Group Site Permissions <span class="pill opt">optional automation</span></h2>
+<p>Instead of hand-maintaining List 4, a nightly Power Automate flow can discover which sites each managed O365/security group has permissions on and keep its rows current. Hand-entered rows are never touched.</p>
+<div class="callout crit"><p><strong>Ship the safe version.</strong> A naive delete step will wipe good data if a single site fails to scan. Use the <em>soft-delete + failure-scoped sweep</em> below, and scan a <em>curated</em> site list — never the whole tenant.</p></div>
+
+<h3>Identity &amp; scope</h3>
+<ul class="tight">
+  <li><strong>Identity:</strong> a dedicated <strong>app registration</strong> with <strong><code>Sites.Selected</code></strong> (granted per site — least privilege). Acquire an <strong>app-only bearer token</strong> via an HTTP action against the <strong>gov endpoints</strong> (<code>login.microsoftonline.us</code> / <code>*.sharepoint.us</code>) and call SharePoint REST with an explicit <code>Authorization</code> header. The stock "Send an HTTP request to SharePoint" action runs as the <em>connection's user</em>, which usually can't read role assignments (that needs Manage-Permissions / Site Collection Admin) — so app-only is cleaner than per-site SCA sprawl.</li>
+  <li><strong>Scope:</strong> a curated <strong>"Managed Sites"</strong> list of site URLs to scan — bounded and predictable. <strong>Not</strong> a tenant-wide scan (thousands of sites blow Power Automate's ~100k-actions/day limit and trigger throttling).</li>
+</ul>
+
+<h3>Sync-only columns to add to Group Site Permissions <span class="pill opt">app ignores these</span></h3>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>Source</code></td><td>Choice (<code>Auto</code> | <code>Manual</code>), default <code>Manual</code></td><td><strong>Ownership guard.</strong> Every flow query/write/delete is filtered <code>Source eq 'Auto'</code>, so hand-entered <code>Manual</code> rows are invisible to the flow.</td></tr>
+    <tr><td><code>SyncKey</code></td><td>Single line of text (<strong>indexed</strong>)</td><td>Upsert key = <code>lower(GroupId) + '|' + canonical(SiteUrl)</code>.</td></tr>
+    <tr><td><code>LastSyncedRunId</code></td><td>Single line of text</td><td>Stamped with this run's id on every confirmed Auto row; unstamped Auto rows are stale.</td></tr>
+    <tr><td><code>SyncStatus</code></td><td>Choice (<code>Active</code> | <code>Stale</code>), default <code>Active</code></td><td>Soft-delete state.</td></tr>
+    <tr><td><code>StaleRuns</code></td><td>Number, default 0</td><td>Consecutive stale runs; hard-delete only at <code>&gt;= 3</code>.</td></tr>
+    <tr><td><code>LastSyncedUtc</code></td><td>Date and Time</td><td>Last-confirmed timestamp (freshness / troubleshooting).</td></tr>
+  </tbody>
+</table>
+
+<h3>The flow (runs nightly)</h3>
+<ol class="tight">
+  <li><strong>Recurrence</strong> (nightly, off-hours) → init <code>runId = guid()</code> and a <code>DryRun</code> boolean (report-only for initial validation). Fetch the list's <code>ListItemEntityTypeFullName</code> once (<code>lists/getbytitle(...)?$select=ListItemEntityTypeFullName</code>) — don't hardcode it.</li>
+  <li><strong>Load Managed Groups</strong> → the set of <code>GroupId</code> GUIDs in scope (skip integer / SharePoint-group rows — no Entra claim to match).</li>
+  <li><strong>Load in-scope sites</strong> from the Managed Sites list.</li>
+  <li><strong>For each site</strong> (Apply to each, concurrency 1):
+    <ul class="tight">
+      <li>GET <code>{site}/_api/web/roleAssignments?$expand=Member,RoleDefinitionBindings&amp;$select=Member/PrincipalType,Member/LoginName,PrincipalId,RoleDefinitionBindings/Name,RoleDefinitionBindings/RoleTypeKind</code> (root web) and <code>{site}/_api/web?$select=Title</code>.</li>
+      <li><strong>Bulk-load</strong> this site's existing <code>Auto</code> rows into memory (one filtered GET), then diff in-flow — avoids a read per candidate.</li>
+      <li>For each role assignment:
+        <ul class="tight">
+          <li><strong>PrincipalType 4</strong> (Entra security / M365 group): parse the GUID by <strong>known prefix</strong> — <code>c:0t.c|tenant|</code> = Security, <code>c:0o.c|federateddirectoryclaimprovider|</code> = M365 (strip a trailing <code>_o</code> owners suffix); lowercase.</li>
+          <li><strong>PrincipalType 8</strong> (a SharePoint site group — Owners/Members/Visitors): GET <code>sitegroups(&lt;PrincipalId&gt;)/users</code> and run the same match on its members. <strong>Mandatory</strong> — most group grants are nested inside these, not direct.</li>
+          <li>If the GUID is in the Managed Groups set → candidate. <code>Permission</code> = the <strong>highest</strong> <code>RoleDefinitionBindings</code> by <code>RoleTypeKind</code>, <strong>dropping "Limited Access"</strong> (a subweb/item artifact, not a real site level).</li>
+        </ul>
+      </li>
+      <li><strong>Diff &amp; write:</strong> create new, update changed, and stamp <code>LastSyncedRunId=runId</code> / <code>SyncStatus=Active</code> / <code>LastSyncedUtc=now</code> on all confirmed Auto rows. Pack writes into an OData <strong><code>$batch</code></strong> (~100 ops/call) to stay under the action limit. (The Hyperlink <code>SiteUrl</code> needs the <code>SP.FieldUrlValue</code> shape; updates use <code>MERGE</code> + <code>IF-MATCH:&nbsp;*</code>.)</li>
+    </ul>
+  </li>
+  <li><strong>Reconcile (soft delete):</strong> for <strong>successfully-scanned sites only</strong>, any <code>Auto</code> row not stamped this run → set <code>SyncStatus=Stale</code>, <code>StaleRuns++</code>. Hard-delete only rows with <code>StaleRuns&nbsp;&gt;=&nbsp;3</code>. <strong>Abort the sweep</strong> if any site GET failed, or if the stale set exceeds ~50% of that site's Auto rows — this prevents a one-bad-night mass wipe.</li>
+  <li><strong>Log</strong> created/updated/deleted counts to a Runs list and <strong>alert</strong> on any site failure or sweep-abort.</li>
+</ol>
+<div class="callout warn"><p><strong>Before the first real run:</strong> set <code>Source = Manual</code> on all existing hand-entered rows, then run once in <code>DryRun</code> mode (log the intended creates/updates/deletes, write nothing) against a couple of sites to validate.</p></div>
+
+<h3>Known limitations (state these on the panel)</h3>
+<ul class="tight">
+  <li>Reads the <strong>site root web only</strong> — access granted solely via a subsite, library, or item with unique permissions isn't captured. Present the panel as "site-level."</li>
+  <li><strong>Site Collection Admins don't appear</strong> in role assignments — a group that is only an SCA won't show.</li>
+  <li>Resolves <strong>one level</strong> of group nesting (a group inside a SharePoint site group); deeper nesting isn't followed.</li>
+</ul>
+
 <h2 id="checklist">Final checklist</h2>
 <ul class="tight">
   <li>☐ All four lists created on one site; titles match the property-pane <em>Data source (lists)</em> values (and the <em>List site URL</em>).</li>
@@ -256,6 +312,7 @@ DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/members/{MemberId}/$ref
   <li>☐ Power Automate flow: trigger on the request list; <strong>multi-value authorization re-check</strong>; fail-closed; exact <code>Status</code> casing.</li>
   <li>☐ Flow identity is Owner of every managed O365 group (or app-registration <code>GroupMember.ReadWrite.All</code>).</li>
   <li>☐ Tenant admin approved the web part's Graph scopes: <code>GroupMember.Read.All</code>, <code>User.ReadBasic.All</code>, <code>User.Read.All</code>, <code>ProfilePhoto.Read.All</code> (add <code>Group.Read.All</code> if the group search 403s).</li>
+  <li>☐ <em>(Optional)</em> Nightly Site Permissions sync: app registration with <code>Sites.Selected</code>; curated Managed Sites list; sync-only columns added; existing rows set to <code>Source=Manual</code>; soft-delete + failure-scoped sweep; validated in DryRun first.</li>
 </ul>
 
 <footer>

@@ -108,3 +108,41 @@ On success → `Status = Completed`, `ResultMessage` = e.g. "Added"/"Removed".
 - Trigger, Graph actions (§5), write-back (§3), and all invariants (§6) are **unchanged**.
 - The web part reads **both** list layouts, so you can migrate the list gradually — but the flow's §4 check and
   the list's multi-value column must change **together**, or O365 requests will fail their authorization step.
+
+---
+
+## 8. Nightly Group Site Permissions sync (optional, separate flow)
+
+A scheduled flow can keep the **Group Site Permissions** list current instead of hand-maintaining it, by
+discovering which sites each managed O365/security group has permissions on. This is a **separate flow** from
+the O365 request flow above.
+
+**Identity & scope.** A dedicated **app registration** with **`Sites.Selected`**, using an **app-only bearer
+token** acquired via an HTTP action against the gov endpoints (`login.microsoftonline.us` / `*.sharepoint.us`)
+and passed as an explicit `Authorization` header on raw SharePoint REST calls (the stock "Send an HTTP request
+to SharePoint" runs as the connection user, which usually can't read role assignments). Scan a **curated
+"Managed Sites" list**, never the whole tenant (Power Automate action limits / throttling).
+
+**Sync-only columns** on Group Site Permissions (the web part ignores them): `Source` (Choice Auto|Manual,
+default Manual), `SyncKey` (indexed text = `lower(GroupId)+'|'+canonical(SiteUrl)`), `LastSyncedRunId` (text),
+`SyncStatus` (Choice Active|Stale), `StaleRuns` (Number), `LastSyncedUtc` (Date/Time).
+
+**Per site (root web):**
+1. `GET {site}/_api/web/roleAssignments?$expand=Member,RoleDefinitionBindings&$select=Member/PrincipalType,Member/LoginName,PrincipalId,RoleDefinitionBindings/Name,RoleDefinitionBindings/RoleTypeKind` + `GET {site}/_api/web?$select=Title`.
+2. Match group principals to Managed Groups GroupIds by **known claim prefix** - `c:0t.c|tenant|` = security group, `c:0o.c|federateddirectoryclaimprovider|` = M365 (strip a trailing `_o`), lowercase both sides.
+3. **Mandatory:** for each `PrincipalType=8` SharePoint site group, `GET sitegroups(<PrincipalId>)/users` and match its members too - most group grants are nested there, not direct.
+4. `Permission` = the highest `RoleDefinitionBindings` by `RoleTypeKind`, **dropping "Limited Access."**
+5. Diff vs the site's existing `Auto` rows; create/update via OData `$batch`; stamp `LastSyncedRunId` / `SyncStatus=Active`.
+
+**Reconcile (soft delete).** For **successfully-scanned sites only**, unstamped `Auto` rows -> `SyncStatus=Stale`,
+`StaleRuns++`; hard-delete only at `StaleRuns >= 3`. **Abort** the sweep if any site GET failed or the stale set
+exceeds ~50% - this prevents a one-bad-night mass wipe. Every query/write/delete is filtered `Source eq 'Auto'`,
+so hand-entered `Manual` rows are never touched.
+
+**Safeguards:** a run-lock (no overlapping runs), a `DryRun` report-only mode for first validation, canonical
+`SiteUrl` in the key, fetch `ListItemEntityTypeFullName` at runtime (don't hardcode it), and a run-log list +
+failure alerts.
+
+**Known limits:** site **root web only** (subsite/list/item unique permissions not captured); Site Collection
+Admins do not appear in role assignments; one level of group nesting. See **Setup-Guide.html -> "Nightly sync"**
+for the full walkthrough.
