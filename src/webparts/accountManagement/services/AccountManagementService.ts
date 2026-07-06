@@ -225,22 +225,38 @@ export class AccountManagementService {
     const web: string = this._sameTenantOrPageWeb(input.siteUrl); // SP groups may live on another (same-tenant) site
 
     if (input.action === 'Add Member') {
-      const login: string | undefined = input.member.userPrincipalName || input.member.mail;
-      if (!login) {
-        throw new Error('The selected user has no UPN/email to add.');
+      // Resolve the principal via ensureuser, then add the canonical login to the site group.
+      // - User: resolve by UPN/mail; fall back to the i:0#.f|membership| claim.
+      // - Group: resolve by mail when present (M365 + mail-enabled groups) else by the Azure AD
+      //   security-group tenant claim c:0t.c|tenant|<objectId>; fall back to that same candidate.
+      let candidate: string;
+      let fallback: string;
+      if (input.member.isGroup) {
+        const byMailOrClaim: string | undefined =
+          input.member.mail || (input.member.id ? `c:0t.c|tenant|${input.member.id}` : undefined);
+        if (!byMailOrClaim) {
+          throw new Error('The selected group cannot be resolved (no mail or id).');
+        }
+        candidate = byMailOrClaim;
+        fallback = byMailOrClaim;
+      } else {
+        const login: string | undefined = input.member.userPrincipalName || input.member.mail;
+        if (!login) {
+          throw new Error('The selected user has no UPN/email to add.');
+        }
+        candidate = login;
+        fallback = `i:0#.f|membership|${login}`;
       }
-      // Resolve the canonical site-user login via ensureuser (handles UPN -> claims, guests, etc.).
-      // Hand-built "i:0#.f|membership|<upn>" claims frequently 400 ("user does not exist or is not unique").
-      let loginName: string = `i:0#.f|membership|${login}`;
+      let loginName: string = fallback;
       try {
-        const ensured: any = await this._post(`${web}/_api/web/ensureuser`, { logonName: login });
+        const ensured: any = await this._post(`${web}/_api/web/ensureuser`, { logonName: candidate });
         if (ensured && ensured.LoginName) {
           loginName = ensured.LoginName;
         }
       } catch {
         /* fall back to the constructed claim */
       }
-      diag(`${DIAG} SharePoint group add`, { spGroupId: input.spGroupId, loginName });
+      diag(`${DIAG} SharePoint group add`, { spGroupId: input.spGroupId, isGroup: !!input.member.isGroup, loginName });
       await this._postSiteGroup(
         `${web}/_api/web/sitegroups(${gid})/users`,
         { __metadata: { type: 'SP.User' }, LoginName: loginName },

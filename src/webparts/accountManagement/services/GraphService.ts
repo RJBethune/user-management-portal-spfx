@@ -128,6 +128,41 @@ export class GraphService {
     }
   }
 
+  /**
+   * Directory GROUP search (Graph /groups?$search) — surfaces M365/security groups so an admin can add
+   * one as a member of a SharePoint site group. Returns IUser shapes flagged isGroup, with id = the
+   * Entra group object id (used to build the SharePoint claim on add).
+   */
+  public async searchGroups(query: string): Promise<IUser[]> {
+    const term: string = (query || '').trim();
+    if (term.length < 2) {
+      return [];
+    }
+    try {
+      diag(`${DIAG} Graph group search starting`, { queryLength: term.length });
+      const client: MSGraphClientV3 = await this._context.msGraphClientFactory.getClient('3');
+      const escaped: string = term.replace(/"/g, '\\"');
+      const search: string = `"displayName:${escaped}" OR "mail:${escaped}"`;
+      const result: any = await client
+        .api(`/groups?$search=${encodeURIComponent(search)}&$select=id,displayName,mail&$top=25`)
+        .header('ConsistencyLevel', 'eventual')
+        .get();
+      diag(`${DIAG} Graph group search loaded`, { count: result.value.length });
+      return ((result && result.value) || [])
+        .map(
+          (g: any): IUser => ({
+            id: g.id,
+            displayName: g.displayName || g.mail || 'Unnamed group',
+            mail: g.mail,
+            isGroup: true
+          })
+        )
+        .filter((u: IUser) => !!u.displayName);
+    } catch (err) {
+      throw new Error('Unable to search groups. ' + toMessage(err, 'Microsoft Graph request failed.'));
+    }
+  }
+
   /** Read-only owners of an O365 group (GUID only). Best-effort; throws on failure for the caller. */
   public async getGroupOwners(groupId: string): Promise<IUser[]> {
     if (!groupId || isSharePointGroup(groupId)) {

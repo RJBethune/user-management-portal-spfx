@@ -9,7 +9,8 @@ import {
   Field,
   Textarea,
   Link,
-  Button
+  Button,
+  Switch
 } from '@fluentui/react-components';
 import {
   ChevronUp20Regular,
@@ -57,6 +58,7 @@ interface ICardState {
   ownersError?: string;
   owners?: IUser[];
   directoryQuery?: string;
+  addMode?: 'people' | 'groups';
   directoryLoading?: boolean;
   directoryResults?: IUser[];
   directoryCapped?: boolean;
@@ -359,7 +361,11 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
   const runDirectorySearch = async (group: IOfficeGroup, term: string): Promise<void> => {
     try {
-      const results: IUser[] = await graphService.current.searchUsers(term);
+      const mode: string = (cards[group.id] && cards[group.id].addMode) || 'people';
+      const results: IUser[] =
+        mode === 'groups'
+          ? await graphService.current.searchGroups(term)
+          : await graphService.current.searchUsers(term);
       // Exclude current members across both id-spaces by id AND upn/mail.
       const members: IUser[] = (cards[group.id] && cards[group.id].members) || [];
       const seen: Set<string> = new Set<string>();
@@ -899,16 +905,36 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
                         {manage.manageable && (
                           <div className={styles.addArea}>
+                            {isSharePointGroup(group.groupId) && (
+                              <Switch
+                                label="Add a group instead of a person"
+                                checked={card.addMode === 'groups'}
+                                disabled={card.processing}
+                                onChange={(_, data) =>
+                                  updateCard(group.id, {
+                                    addMode: data.checked ? 'groups' : 'people',
+                                    directoryQuery: '',
+                                    directoryResults: [],
+                                    selectedUser: undefined
+                                  })
+                                }
+                              />
+                            )}
                             <SearchBox
-                              placeholder="Search directory to add a member (type 3+ letters)"
+                              placeholder={
+                                card.addMode === 'groups'
+                                  ? 'Search for a group to add (type 3+ letters)'
+                                  : 'Search directory to add a member (type 3+ letters)'
+                              }
                               value={card.directoryQuery || ''}
-                              aria-label={`Search the directory to add a member to ${group.title}`}
+                              aria-label={
+                                card.addMode === 'groups'
+                                  ? `Search for a group to add to ${group.title}`
+                                  : `Search the directory to add a member to ${group.title}`
+                              }
                               onChange={(_, data) => onDirectoryChange(group, data.value || '')}
                               disabled={card.processing}
                             />
-                            {isSharePointGroup(group.groupId) && (
-                              <p className={styles.emptyText}>You can add individual users only (not groups).</p>
-                            )}
                             {card.directoryLoading && <Spinner size="small" label="Searching..." />}
                             {card.directoryCapped && !card.directoryLoading && (
                               <p className={styles.emptyText}>Showing the first 25 matches — keep typing to narrow.</p>
@@ -926,10 +952,18 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                     }`}
                                     onClick={() => updateCard(group.id, { selectedUser: u })}
                                   >
-                                    <span className={styles.avatar}>{initials(u.displayName)}</span>
+                                    <span className={styles.avatar}>
+                                      {u.isGroup ? <People20Regular /> : initials(u.displayName)}
+                                    </span>
                                     <span className={styles.memberDetails}>
                                       <strong>{u.displayName}</strong>
-                                      <span>{u.jobTitle || u.mail || u.userPrincipalName}</span>
+                                      <span>
+                                        {u.isGroup
+                                          ? u.mail
+                                            ? `Group · ${u.mail}`
+                                            : 'Group'
+                                          : u.jobTitle || u.mail || u.userPrincipalName}
+                                      </span>
                                     </span>
                                   </button>
                                 ))}
@@ -950,7 +984,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 )}
                                 <div className={styles.selectedUser}>
                                   <span>
-                                    Add <strong>{card.selectedUser.displayName}</strong>
+                                    Add {card.selectedUser.isGroup ? 'the group ' : ''}
+                                    <strong>{card.selectedUser.displayName}</strong>
                                   </span>
                                   <Button
                                     appearance="primary"
