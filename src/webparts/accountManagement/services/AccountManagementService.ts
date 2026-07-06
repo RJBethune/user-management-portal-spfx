@@ -98,9 +98,19 @@ export class AccountManagementService {
     const items: any[] = (await this._get(url)).value;
     diag(`${DIAG} authorized admins loaded`, { count: items.length });
 
-    const recordIds: number[] = items
-      .map((i: any) => i.OfficeGroupRecord && i.OfficeGroupRecord.Id)
-      .filter((v: any) => typeof v === 'number');
+    // OfficeGroupRecord can be a single-value lookup (object) OR a multi-value lookup (array / {results:[]}),
+    // so ONE admin row may authorize several groups. Normalize each row's lookup to a flat list of records.
+    const asRecords = (v: any): any[] =>
+      !v ? [] : Array.isArray(v) ? v : Array.isArray(v.results) ? v.results : [v];
+
+    const recordIds: number[] = [];
+    items.forEach((i: any) => {
+      asRecords(i.OfficeGroupRecord).forEach((r: any) => {
+        if (r && typeof r.Id === 'number') {
+          recordIds.push(r.Id);
+        }
+      });
+    });
     if (recordIds.length === 0) {
       return [];
     }
@@ -109,19 +119,25 @@ export class AccountManagementService {
       count: recordIds.length,
       listTitle: this._config.groupListTitle
     });
-    const groupsById: Map<number, IOfficeGroup> = await this._getOfficeGroupsByIds(recordIds);
+    const groupsById: Map<number, IOfficeGroup> = await this._getOfficeGroupsByIds(
+      Array.from(new Set<number>(recordIds))
+    );
     diag(`${DIAG} group records loaded`, { count: groupsById.size });
 
-    return items
-      .map((i: any): IOfficeGroup | undefined => {
-        const recId: number | undefined = i.OfficeGroupRecord && i.OfficeGroupRecord.Id;
-        const group: IOfficeGroup | undefined = recId ? groupsById.get(recId) : undefined;
-        if (group) {
-          return { ...group, authorizationItemId: i.Id };
+    // Flatten every (row -> its group records) into a deduped list of authorized groups.
+    const authorized: IOfficeGroup[] = [];
+    const seen: Set<number> = new Set<number>();
+    items.forEach((i: any) => {
+      asRecords(i.OfficeGroupRecord).forEach((r: any) => {
+        const recId: number | undefined = r && typeof r.Id === 'number' ? r.Id : undefined;
+        const group: IOfficeGroup | undefined = recId !== undefined ? groupsById.get(recId) : undefined;
+        if (group && !seen.has(group.id)) {
+          seen.add(group.id);
+          authorized.push({ ...group, authorizationItemId: i.Id });
         }
-        return undefined;
-      })
-      .filter((g: IOfficeGroup | undefined): g is IOfficeGroup => !!g);
+      });
+    });
+    return authorized;
   }
 
   /** PROD path: file a Pending request item for the backend flow to process. */

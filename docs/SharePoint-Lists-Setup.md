@@ -97,14 +97,25 @@ flow performs the Microsoft Graph change and writes the result back. All columns
 ## List 3 — `Group Management Authorized Admins`  (property: `authorizedAdminsListTitle`)
 
 Authorization table: which users may manage which groups. **Read-only to the app — admins populate it.**
-One row per (admin → group). To let a user manage several groups, add several rows.
+**One row per admin** — `OfficeGroupRecord` is a **multiple-value** lookup, so you select *all* the groups
+that admin manages in a single row. (The app also still reads the old one-row-per-group layout, so you can
+migrate at your own pace.)
 
 | Column (internal name) | Type | Filled by | Notes |
 |---|---|---|---|
 | `User` | **Person or Group** (single) | Admin | The authorized admin. The app filters on this (REST `UserId`) — **index it.** |
-| `OfficeGroupRecord` | **Lookup → `Managed Groups`** (show `Title`) | Admin | The group this user may manage. The app pulls `Title`/`GroupId`/`SiteTitle` from the linked Managed Groups row. |
+| `OfficeGroupRecord` | **Lookup → `Managed Groups`** (show `Title`), **Allow multiple values ✓** | Admin | All groups this admin may manage — pick several in the one row. The app reads each and pulls `Title`/`GroupId`/`SiteTitle`. A single-value lookup still works (old layout). |
 
 *(The built-in `ID` is used internally — no action.)*
+
+> **Switching an existing list to multi-select:** SharePoint won't let you toggle "Allow multiple values" on a
+> lookup that already has data. Delete the existing `OfficeGroupRecord` column and re-create it with the **same
+> name** and **Allow multiple values** checked, then consolidate to one row per admin.
+>
+> ⚠️ **Power Automate flow:** the flow's server-side authorization re-check reads this same list. It must be
+> updated to test whether the requested group is **in** the requester's multi-value `OfficeGroupRecord`
+> collection (instead of matching a single lookup). Update the flow together with this list change, or O365
+> membership requests will fail their authorization check.
 
 ---
 
