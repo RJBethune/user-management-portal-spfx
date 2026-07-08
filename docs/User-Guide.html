@@ -62,6 +62,7 @@
     <li><a href="#basics">First, the basics</a></li>
     <li><a href="#add">Add a member</a></li>
     <li><a href="#remove">Remove a member</a></li>
+    <li><a href="#sites">Where a group grants access</a></li>
     <li><a href="#status">What the status colors mean</a></li>
     <li><a href="#tips">Tips &amp; troubleshooting</a></li>
   </ol>
@@ -250,6 +251,40 @@
     <p>The person drops out of <strong>Current members</strong> — immediately for a SharePoint group, or after a quick <strong>Pending → Completed</strong> for a Microsoft 365 group.</p>
   </div>
 </div>
+
+<!-- ============ USED ON SITES ============ -->
+<h2 id="sites">Where a group grants access — “Used on these sites”</h2>
+<p>When you expand a group, you may see a <strong>“Used on these sites”</strong> panel. It lists the SharePoint sites this group is used to give access to, and the permission level the group has on each.</p>
+<div class="callout"><p><strong>Why this matters:</strong> these groups aren't just lists of people — they're used to <strong>control who can get into these SharePoint sites</strong>. Adding someone to the group <em>gives</em> them that access on those sites; removing them <em>takes it away</em>. Check this panel first so you know exactly what your change affects.</p></div>
+<svg class="mock" viewBox="0 0 640 190" role="img" aria-label="The Used on these sites panel: each row is a SharePoint site link and the permission level the group has there">
+  <text x="16" y="26" font-size="14" font-weight="700" fill="#12335c" font-family="Segoe UI,sans-serif">Used on these sites</text>
+  <!-- row 1 -->
+  <rect x="16" y="38" width="608" height="42" rx="8" fill="#fff" stroke="#e3e7ec"/>
+  <circle cx="40" cy="59" r="9" fill="none" stroke="#5b6570" stroke-width="1.3"/>
+  <line x1="31" y1="59" x2="49" y2="59" stroke="#5b6570" stroke-width="1.1"/>
+  <ellipse cx="40" cy="59" rx="4" ry="9" fill="none" stroke="#5b6570" stroke-width="1.1"/>
+  <text x="60" y="64" font-size="14" font-weight="600" fill="#0b4a8f" text-decoration="underline" font-family="Segoe UI,sans-serif">IMPVX Working Site</text>
+  <rect x="508" y="47" width="100" height="24" rx="12" fill="#eef4fd"/>
+  <text x="558" y="63" font-size="12" font-weight="700" fill="#0b4a8f" text-anchor="middle" font-family="Segoe UI,sans-serif">Full Control</text>
+  <!-- row 2 -->
+  <rect x="16" y="86" width="608" height="42" rx="8" fill="#fff" stroke="#e3e7ec"/>
+  <circle cx="40" cy="107" r="9" fill="none" stroke="#5b6570" stroke-width="1.3"/>
+  <line x1="31" y1="107" x2="49" y2="107" stroke="#5b6570" stroke-width="1.1"/>
+  <ellipse cx="40" cy="107" rx="4" ry="9" fill="none" stroke="#5b6570" stroke-width="1.1"/>
+  <text x="60" y="112" font-size="14" font-weight="600" fill="#0b4a8f" text-decoration="underline" font-family="Segoe UI,sans-serif">Board Reports</text>
+  <rect x="552" y="95" width="56" height="24" rx="12" fill="#eef4fd"/>
+  <text x="580" y="111" font-size="12" font-weight="700" fill="#0b4a8f" text-anchor="middle" font-family="Segoe UI,sans-serif">Edit</text>
+  <!-- row 3 -->
+  <rect x="16" y="134" width="608" height="42" rx="8" fill="#fff" stroke="#e3e7ec"/>
+  <circle cx="40" cy="155" r="9" fill="none" stroke="#5b6570" stroke-width="1.3"/>
+  <line x1="31" y1="155" x2="49" y2="155" stroke="#5b6570" stroke-width="1.1"/>
+  <ellipse cx="40" cy="155" rx="4" ry="9" fill="none" stroke="#5b6570" stroke-width="1.1"/>
+  <text x="60" y="160" font-size="14" font-weight="600" fill="#0b4a8f" text-decoration="underline" font-family="Segoe UI,sans-serif">Policy Library</text>
+  <rect x="552" y="143" width="56" height="24" rx="12" fill="#eef4fd"/>
+  <text x="580" y="159" font-size="12" font-weight="700" fill="#0b4a8f" text-anchor="middle" font-family="Segoe UI,sans-serif">Read</text>
+</svg>
+<p class="cap">Click a site name to open it. The label on the right — <strong>Full Control</strong>, <strong>Edit</strong>, or <strong>Read</strong> — is the level of access the group has on that site.</p>
+<p>This appears for both <span class="badge b-o365">Microsoft 365</span> and <span class="badge b-sp">SharePoint</span> groups. If a group isn't used on any site, the panel simply doesn't show.</p>
 
 <!-- ============ STATUS ============ -->
 <h2 id="status">What the status colors mean</h2>
