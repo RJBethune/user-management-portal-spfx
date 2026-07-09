@@ -1,7 +1,9 @@
 # Power Automate Flow Spec — 365 Account Management (O365 group requests)
 
 This is the **app-side contract** the flow must satisfy. It only handles **O365 (GUID) group** requests —
-SharePoint site-group changes are applied directly by the web part and never reach the flow. Reconcile with
+SharePoint site-group changes are applied directly by the web part (not via Graph), but they ARE still logged
+to this same list as **`Status = Completed`** audit rows, so the flow MUST skip any non-Pending row (see the
+guard in section 1) or it will re-process them and fail. Reconcile with
 your existing flow build notes; **the one thing that changed in this release is the authorization re-check**
 (Authorized Admins is now one row per admin with a **multi-value** group lookup — see §4/§7).
 
@@ -9,6 +11,11 @@ your existing flow build notes; **the one thing that changed in this release is 
 
 ## 1. Trigger & identity
 - **Trigger:** *When an item is created* on the **Group Membership Requests** list (the request/audit list).
+- **FIRST ACTION (required) — guard on Status:** if `Status` is **not** `Pending`, **terminate immediately**
+  (do nothing / Cancelled). The SharePoint-direct path writes `Completed` audit rows to this same list; without
+  this guard the flow re-processes them, the Graph call fails on the SharePoint group's **integer** `GroupId`,
+  and it overwrites `Status` to `Failed` — the user sees "Completed, then Failed." Only `Status = Pending` rows
+  are real O365 work. (Optionally also skip when `GroupId` is not a GUID, as belt-and-suspenders.)
 - **Concurrency:** Degree of Parallelism = **1** (serialize; avoids interleaving on the same group).
 - **Runs as:** a service account that is **Owner of every managed O365 group**, or an app registration with
   application permission **`GroupMember.ReadWrite.All`**. (This identity is the elevation — the web part itself

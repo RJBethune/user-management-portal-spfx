@@ -191,7 +191,8 @@
 <div class="callout tip"><p><strong>Automate it:</strong> this list can be kept current by a nightly flow instead of by hand — see <a href="#sync">Nightly sync</a>. It adds a few sync-only columns (the app ignores them) and never touches your hand-entered rows.</p></div>
 
 <h2 id="flow">The Power Automate flow (O365 requests only)</h2>
-<p>SharePoint site-group changes are applied directly by the web part and never reach the flow. The flow exists purely for the <strong>O365 (GUID) group</strong> path.</p>
+<p>SharePoint site-group changes are applied directly by the web part (not via Graph). The flow exists purely for the <strong>O365 (GUID) group</strong> path.</p>
+<div class="callout crit"><p><strong>Required first step — guard on <code>Status = Pending</code>.</strong> The SharePoint-direct path logs its changes to this same list as <code>Completed</code> rows. The flow's very first action must <strong>terminate if <code>Status</code> is not <code>Pending</code></strong> — otherwise it re-processes those rows, fails on the SharePoint integer <code>GroupId</code>, and overwrites <code>Status</code> to <code>Failed</code> (users see "Completed, then Failed").</p></div>
 
 <h3>Trigger &amp; identity</h3>
 <ul class="tight">
