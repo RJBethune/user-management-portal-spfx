@@ -1036,7 +1036,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                       </span>
                                       <span className={styles.memberDetails}>
                                         <strong>{m.displayName}</strong>
-                                        <span>
+                                        <span title={m.isGroup ? (m.mail ? `Group · ${m.mail}` : 'Group') : (m.jobTitle || m.mail || m.userPrincipalName)}>
                                           {m.isGroup
                                             ? m.mail
                                               ? `Group · ${m.mail}`
@@ -1110,7 +1110,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                           <span className={styles.avatar}>{initials(o.displayName)}</span>
                                           <span className={styles.memberDetails}>
                                             <strong>{o.displayName}</strong>
-                                            <span>{o.jobTitle || o.mail || o.userPrincipalName}</span>
+                                            <span title={o.jobTitle || o.mail || o.userPrincipalName}>{o.jobTitle || o.mail || o.userPrincipalName}</span>
                                           </span>
                                         </span>
                                       )}

@@ -192,7 +192,9 @@
 // part zone (basis + gap must stay under the available width, or the columns
 // wrap and stack). They still stack gracefully on narrower/mobile widths.
 .colMembers {
-  flex: 1 1 280px;
+  // grow 2 vs the side panel's 1 — the members column carries the Remove
+  // button, so it earns more of the shared width.
+  flex: 2 1 280px;
   min-width: 0;
 }
 
@@ -389,10 +391,15 @@
 .memberDetails {
   min-width: 0;
 
+  // One line each, truncated with an ellipsis (full value on hover via title=)
+  // — long shared-domain emails otherwise wrap mid-word and make the two
+  // columns look cramped.
   span,
   strong {
     display: block;
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   span {
