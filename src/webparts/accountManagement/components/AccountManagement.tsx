@@ -1007,7 +1007,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 )}
                                 {showSites && (
                                   <button type="button" role="tab" aria-selected={active === 'sites'} className={`${styles.tab} ${active === 'sites' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'sites' })}>
-                                    Used on these sites
+                                    Used On{card.sitePerms ? ` (${card.sitePerms.length})` : ''}
                                   </button>
                                 )}
                               </div>
