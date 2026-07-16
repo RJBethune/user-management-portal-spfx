@@ -48,7 +48,7 @@
         "title": "365 Account Management Feature",
         "description": "Activates the 365 Account Management web part.",
         "id": "0ce47f4e-35ca-4b99-afb7-ce1b2703ccaf",
-        "version": "1.8.1.0"
+        "version": "1.9.0.0"
       }
     ]
   },
