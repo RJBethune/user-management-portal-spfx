@@ -989,8 +989,30 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           </div>
                         )}
 
-                        <div className={styles.cardColumns}>
-                          <div className={styles.colMembers}>
+                        {(() => {
+                          const showOwners: boolean = !isSharePointGroup(group.groupId) && manage.manageable && !!(card.owners || card.ownersLoading || card.ownersError);
+                          const showSites: boolean = !!(card.sitePerms && card.sitePerms.length);
+                          const keys: string[] = ['members', showOwners ? 'owners' : '', showSites ? 'sites' : ''].filter((k: string) => !!k);
+                          const active: string = keys.indexOf(card.activeTab || '') !== -1 ? (card.activeTab as string) : 'members';
+                          return (
+                            <div className={styles.tabs}>
+                              <div className={styles.tabStrip} role="tablist" aria-label="Group details">
+                                <button type="button" role="tab" aria-selected={active === 'members'} className={`${styles.tab} ${active === 'members' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'members' })}>
+                                  Members{card.members ? ` (${card.members.length})` : ''}
+                                </button>
+                                {showOwners && (
+                                  <button type="button" role="tab" aria-selected={active === 'owners'} className={`${styles.tab} ${active === 'owners' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'owners' })}>
+                                    Owners{card.owners ? ` (${card.owners.length})` : ''}
+                                  </button>
+                                )}
+                                {showSites && (
+                                  <button type="button" role="tab" aria-selected={active === 'sites'} className={`${styles.tab} ${active === 'sites' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'sites' })}>
+                                    Used on these sites
+                                  </button>
+                                )}
+                              </div>
+                              <div className={styles.tabPanel} role="tabpanel">
+                                <div hidden={active !== 'members'}>
                         <div className={styles.membersHeader}>
                           <h3>Members{card.members ? ` (${card.members.length})` : ''}</h3>
                           <Button
@@ -1072,29 +1094,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                             )}
                           </div>
                         )}
-                          </div>
-                          {(() => {
-                            const showOwners: boolean = !isSharePointGroup(group.groupId) && manage.manageable && !!(card.owners || card.ownersLoading || card.ownersError);
-                            const showSites: boolean = !!(card.sitePerms && card.sitePerms.length);
-                            const keys: string[] = [showOwners ? 'owners' : '', showSites ? 'sites' : ''].filter((k: string) => !!k);
-                            if (keys.length === 0) { return null; }
-                            const active: string = keys.indexOf(card.activeTab || '') !== -1 ? (card.activeTab as string) : keys[0];
-                            return (
-                              <div className={styles.colSide}>
-                                <div className={styles.tabStrip} role="tablist" aria-label="Group details">
-                                  {showOwners && (
-                                    <button type="button" role="tab" aria-selected={active === 'owners'} className={`${styles.tab} ${active === 'owners' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'owners' })}>
-                                      Owners{card.owners ? ` (${card.owners.length})` : ''}
-                                    </button>
-                                  )}
-                                  {showSites && (
-                                    <button type="button" role="tab" aria-selected={active === 'sites'} className={`${styles.tab} ${active === 'sites' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'sites' })}>
-                                      Used on these sites
-                                    </button>
-                                  )}
                                 </div>
-                                <div className={styles.tabPanel} role="tabpanel">
-                                  <div hidden={active !== 'owners'}>
+                                <div hidden={active !== 'owners'}>
                         {!isSharePointGroup(group.groupId) && manage.manageable && (card.owners || card.ownersLoading || card.ownersError) && (
                           <div className={styles.subSection}>
                             <h3>Owners</h3>
@@ -1124,8 +1125,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                             )}
                           </div>
                         )}
-                                  </div>
-                                  <div hidden={active !== 'sites'}>
+                                </div>
+                                <div hidden={active !== 'sites'}>
                         {card.sitePerms && card.sitePerms.length > 0 && (
                           <div className={styles.subSection}>
                             <h3>Used on these sites</h3>
@@ -1147,12 +1148,11 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                             </div>
                           </div>
                         )}
-                                  </div>
                                 </div>
                               </div>
-                            );
-                          })()}
-                        </div>
+                            </div>
+                          );
+                        })()}
 
                         {recentForGroup.length > 0 && (
                           <div className={styles.subSection}>

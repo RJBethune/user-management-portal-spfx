@@ -178,30 +178,10 @@
   overflow-y: auto;
 }
 
-// Two-column card body: Members on the left, Owners/Used-on-sites tabs on the right.
-// align-items: flex-start keeps each column its own natural height (a short tab
-// panel never stretches to match a long member list).
-.cardColumns {
-  align-items: flex-start;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-// Small flex-basis values so the two columns sit side by side in a ~600px web
-// part zone (basis + gap must stay under the available width, or the columns
-// wrap and stack). They still stack gracefully on narrower/mobile widths.
-.colMembers {
-  // grow 2 vs the side panel's 1 — the members column carries the Remove
-  // button, so it earns more of the shared width.
-  flex: 2 1 280px;
-  min-width: 0;
-}
-
-.colSide {
-  flex: 1 1 190px;
-  max-width: 420px;
-  min-width: 0;
+// Full-width tab strip across the card body: Members, then Owners, then Used
+// on these sites. One panel shows at a time, so each gets the full width.
+.tabs {
+  margin-top: 4px;
 }
 
 .tabStrip {
@@ -366,6 +346,9 @@
 }
 
 .membersHeader {
+  // In the Members tab the h3 is hidden (the tab label names the panel), so
+  // the lone refresh button aligns to the right.
+  justify-content: flex-end;
   margin-top: 4px;
 
   h3 {
