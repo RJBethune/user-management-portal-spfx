@@ -3,7 +3,7 @@
   "solution": {
     "name": "365 Account Management",
     "id": "ee656af9-b263-4758-b163-a56663bc6cbd",
-    "version": "1.9.5.0",
+    "version": "1.9.6.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": false,
     "isDomainIsolated": false,
@@ -48,7 +48,7 @@
         "title": "365 Account Management Feature",
         "description": "Activates the 365 Account Management web part.",
         "id": "0ce47f4e-35ca-4b99-afb7-ce1b2703ccaf",
-        "version": "1.9.5.0"
+        "version": "1.9.6.0"
       }
     ]
   },

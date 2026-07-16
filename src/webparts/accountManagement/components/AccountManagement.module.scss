@@ -50,12 +50,10 @@
 }
 
 .grid {
-  // Top-align cards so each keeps its natural height — otherwise a grid row
-  // stretches every card to match its tallest (expanded) neighbor.
-  align-items: start;
+  // One card per row — a single O365/SharePoint group per row, full width.
   display: grid;
   gap: 18px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .groupCard {
