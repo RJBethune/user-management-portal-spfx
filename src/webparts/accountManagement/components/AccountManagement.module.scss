@@ -185,16 +185,19 @@
   align-items: flex-start;
   display: flex;
   flex-wrap: wrap;
-  gap: 24px;
+  gap: 20px;
 }
 
+// Small flex-basis values so the two columns sit side by side in a ~600px web
+// part zone (basis + gap must stay under the available width, or the columns
+// wrap and stack). They still stack gracefully on narrower/mobile widths.
 .colMembers {
-  flex: 1 1 340px;
+  flex: 1 1 280px;
   min-width: 0;
 }
 
 .colSide {
-  flex: 1 1 260px;
+  flex: 1 1 190px;
   max-width: 420px;
   min-width: 0;
 }
