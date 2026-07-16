@@ -3,7 +3,7 @@
   "solution": {
     "name": "365 Account Management",
     "id": "ee656af9-b263-4758-b163-a56663bc6cbd",
-    "version": "1.8.1.0",
+    "version": "1.9.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": false,
     "isDomainIsolated": false,

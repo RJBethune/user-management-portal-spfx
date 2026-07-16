@@ -178,6 +178,67 @@
   overflow-y: auto;
 }
 
+// Two-column card body: Members on the left, Owners/Used-on-sites tabs on the right.
+// align-items: flex-start keeps each column its own natural height (a short tab
+// panel never stretches to match a long member list).
+.cardColumns {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.colMembers {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+.colSide {
+  flex: 1 1 260px;
+  max-width: 420px;
+  min-width: 0;
+}
+
+.tabStrip {
+  border-bottom: 1px solid #e3e7ec;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: #605e5c;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+
+  &:hover {
+    color: #12335c;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #2564cf;
+    outline-offset: -2px;
+  }
+}
+
+.tabActive {
+  border-bottom-color: #2564cf;
+  color: #0b4a8f;
+}
+
+.tabPanel {
+  // The active tab's label already names the panel, so drop the inner heading.
+  h3 {
+    display: none;
+  }
+}
+
 .personRow {
   align-items: center;
   background: #fff;
