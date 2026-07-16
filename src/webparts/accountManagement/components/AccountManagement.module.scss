@@ -50,6 +50,9 @@
 }
 
 .grid {
+  // Top-align cards so each keeps its natural height — otherwise a grid row
+  // stretches every card to match its tallest (expanded) neighbor.
+  align-items: start;
   display: grid;
   gap: 18px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
