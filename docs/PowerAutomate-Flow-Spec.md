@@ -20,11 +20,15 @@ your existing flow build notes; **the one thing that changed in this release is 
 - **Runs as:** a service account that is **Owner of every managed O365 group**, or an app registration with
   application permission **`GroupMember.ReadWrite.All`**. (This identity is the elevation — the web part itself
   holds only read scopes.)
+- **Owner actions need a broader scope:** `Add Owner` / `Remove Owner` (see §5) act on the group's **owners**
+  collection, which requires **`Group.ReadWrite.All`** (delegated or application) — `GroupMember.ReadWrite.All`
+  covers members only. Add and admin-consent `Group.ReadWrite.All` on the flow identity **before** enabling
+  owner requests, or those rows fail with an authorization error.
 
 ## 2. Request item — fields the flow READS
 | Field (internal name) | Type | Use |
 |---|---|---|
-| `Action` | Choice | `Add Member` or `Remove Member` |
+| `Action` | Choice | `Add Member`, `Remove Member`, `Add Owner`, or `Remove Owner` |
 | `GroupId` | Text | **Target O365 group object id (GUID)** — the group to change |
 | `MemberId` | Text | **Member's Entra object id (GUID)** — the person to add/remove (use for the Graph call) |
 | `MemberDisplayName`, `GroupName` | Text | Display / logging only |
@@ -93,6 +97,21 @@ Using `GroupId` (target group) and `MemberId` (member object id):
   DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/members/{MemberId}/$ref
   ```
   Treat **HTTP 404 "not found"** as success (already not a member).
+- **Add Owner:** (needs `Group.ReadWrite.All` — see §1)
+  ```
+  POST https://graph.microsoft.com/v1.0/groups/{GroupId}/owners/$ref
+  Body: { "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/{MemberId}" }
+  ```
+  Treat **HTTP 400 "already exists"** as success. (An owner should also be a member — optionally also POST to
+  `/members/$ref` so the new owner is a member too.)
+- **Remove Owner:** (needs `Group.ReadWrite.All`)
+  **Guard first — refuse to remove the last owner:** GET `https://graph.microsoft.com/v1.0/groups/{GroupId}/owners?$count=true`
+  (header `ConsistencyLevel: eventual`); if the group has only **one** owner, write `Status = Failed`,
+  `ResultMessage = "Cannot remove the last owner"` and make **no** change. Otherwise:
+  ```
+  DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/owners/{MemberId}/$ref
+  ```
+  Treat **HTTP 404 "not found"** as success (already not an owner).
 
 On any other Graph error → `Status = Failed`, `ResultMessage` = the Graph error.
 On success → `Status = Completed`, `ResultMessage` = e.g. "Added"/"Removed".

@@ -67,6 +67,7 @@ interface ICardState {
   processingMessage?: string;
   alert?: IAlert;
   confirmRemove?: IUser;
+  confirmRemoveAction?: MembershipAction;
   recentOpen?: boolean;
   activeTab?: string;
   sitePerms?: ISitePermission[];
@@ -75,8 +76,16 @@ interface ICardState {
 
 const ACTION_LABEL: { [key: string]: string } = {
   'Add Member': 'Add member',
-  'Remove Member': 'Remove'
+  'Remove Member': 'Remove',
+  'Add Owner': 'Add owner',
+  'Remove Owner': 'Remove owner'
 };
+
+// Owner actions target a group's owners collection (O365 only); member actions target members.
+const isOwnerAction = (a: MembershipAction): boolean => a === 'Add Owner' || a === 'Remove Owner';
+const isRemoveAction = (a: MembershipAction): boolean => a === 'Remove Member' || a === 'Remove Owner';
+const inverseAction = (a: MembershipAction): MembershipAction =>
+  a === 'Add Member' ? 'Remove Member' : a === 'Remove Member' ? 'Add Member' : a === 'Add Owner' ? 'Remove Owner' : 'Add Owner';
 
 // Directory-search tuning (large-tenant friendly).
 const MIN_SEARCH_CHARS: number = 3;
@@ -175,19 +184,20 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const applyMemberChange = (id: number, action: MembershipAction, member: IUser): void => {
     // UPN/mail first so the key matches across id-spaces (Graph GUID vs SharePoint site-user id).
     const key = (u: IUser): string => (u.userPrincipalName || u.mail || u.id || '').toLowerCase();
+    const owner: boolean = isOwnerAction(action);
     setCards((prev: { [id: number]: ICardState }) => {
       const card: ICardState = prev[id] || {};
-      const existing: IUser[] = card.members || [];
-      let members: IUser[];
-      if (action === 'Remove Member') {
-        members = existing.filter((m: IUser) => key(m) !== key(member));
+      const existing: IUser[] = (owner ? card.owners : card.members) || [];
+      let updated: IUser[];
+      if (isRemoveAction(action)) {
+        updated = existing.filter((m: IUser) => key(m) !== key(member));
       } else if (existing.some((m: IUser) => key(m) === key(member))) {
-        members = existing; // already present (idempotent add) — leave as-is
+        updated = existing; // already present (idempotent add) — leave as-is
       } else {
-        members = existing.concat([member]);
+        updated = existing.concat([member]);
       }
       const next: { [id: number]: ICardState } = { ...prev };
-      next[id] = { ...card, members: members };
+      next[id] = owner ? { ...card, owners: updated } : { ...card, members: updated };
       return next;
     });
   };
@@ -431,7 +441,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         if (result.status === 'Failed') {
           // Undo the optimistic change, name the member so a queued failure is unambiguous, and
           // reconcile the list against the server.
-          applyMemberChange(group.id, action === 'Add Member' ? 'Remove Member' : 'Add Member', member);
+          applyMemberChange(group.id, inverseAction(action), member);
           updateCard(group.id, {
             alert: {
               type: 'error',
@@ -439,7 +449,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
               requestId
             }
           });
-          loadMembers(group).catch(() => undefined);
+          (isOwnerAction(action) ? loadOwners(group) : loadMembers(group)).catch(() => undefined);
         } else {
           // Completed — drop this request's "submitted / tracking" banner if it's still showing.
           clearAlertFor(group.id, requestId);
@@ -447,9 +457,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         loadRecent().catch(() => undefined);
       })
       .catch(() => {
-        // Timed out or errored mid-poll — re-read the member list so we stop trusting the optimistic state,
+        // Timed out or errored mid-poll — re-read the affected list so we stop trusting the optimistic state,
         // and refresh recent so the (now possibly stale-Pending -> Error) status shows.
-        loadMembers(group).catch(() => undefined);
+        (isOwnerAction(action) ? loadOwners(group) : loadMembers(group)).catch(() => undefined);
         loadRecent().catch(() => undefined);
       });
   };
@@ -504,7 +514,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           recentOpen: true,
           alert: {
             type: 'info',
-            text: `Request submitted for ${member.displayName}. Tracking it in "Your recent requests".`,
+            text: `Request submitted for ${member.displayName}. Tracking it in the Recent Requests tab.`,
             requestId: created.id
           }
         });
@@ -848,12 +858,17 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 <Warning20Regular className={styles.confirmIcon} />
                                 <span>
                                   Remove {card.confirmRemove.isGroup ? 'the group ' : ''}
-                                  <strong>{card.confirmRemove.displayName}</strong> from {group.title}?
+                                  <strong>{card.confirmRemove.displayName}</strong>{' '}
+                                  {card.confirmRemoveAction === 'Remove Owner' ? 'as an owner of' : 'from'} {group.title}?
                                   {(card.confirmRemove.userPrincipalName || card.confirmRemove.mail || '').toLowerCase() ===
                                   currentUserKey
                                     ? ' This is your own access.'
                                     : ''}
-                                  {(card.members ? card.members.length : 0) === 1
+                                  {card.confirmRemoveAction === 'Remove Owner'
+                                    ? (card.owners ? card.owners.length : 0) === 1
+                                      ? ' This is the last owner of the group.'
+                                      : ''
+                                    : (card.members ? card.members.length : 0) === 1
                                     ? ' This is the last member of the group.'
                                     : ''}
                                 </span>
@@ -874,7 +889,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                   appearance="primary"
                                   className={justificationMissing ? undefined : styles.dangerButton}
                                   disabled={justificationMissing}
-                                  onClick={() => submit(group, 'Remove Member', card.confirmRemove as IUser, card.justification)}
+                                  onClick={() => submit(group, card.confirmRemoveAction || 'Remove Member', card.confirmRemove as IUser, card.justification)}
                                 >
                                   Remove
                                 </Button>
@@ -975,14 +990,24 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                     Add {card.selectedUser.isGroup ? 'the group ' : ''}
                                     <strong>{card.selectedUser.displayName}</strong>
                                   </span>
-                                  <Button
-                                    appearance="primary"
-                                    icon={<PersonAdd20Regular />}
-                                    disabled={card.processing || justificationMissing}
-                                    onClick={() => submit(group, 'Add Member', card.selectedUser as IUser, card.justification)}
-                                  >
-                                    Submit
-                                  </Button>
+                                  <div className={styles.selectedUserActions}>
+                                    <Button
+                                      appearance="primary"
+                                      icon={<PersonAdd20Regular />}
+                                      disabled={card.processing || justificationMissing}
+                                      onClick={() => submit(group, 'Add Member', card.selectedUser as IUser, card.justification)}
+                                    >
+                                      {isSharePointGroup(group.groupId) ? 'Submit' : 'Add as member'}
+                                    </Button>
+                                    {!isSharePointGroup(group.groupId) && !card.selectedUser.isGroup && (
+                                      <Button
+                                        disabled={card.processing || justificationMissing}
+                                        onClick={() => submit(group, 'Add Owner', card.selectedUser as IUser, card.justification)}
+                                      >
+                                        Add as owner
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               </>
                             )}
@@ -1079,7 +1104,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                   <Button
                                     icon={<Delete20Regular />}
                                     disabled={card.processing}
-                                    onClick={() => updateCard(group.id, { confirmRemove: m })}
+                                    onClick={() => updateCard(group.id, { confirmRemove: m, confirmRemoveAction: 'Remove Member' })}
                                   >
                                     Remove
                                   </Button>
@@ -1122,6 +1147,15 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                         </span>
                                       )}
                                     </div>
+                                    {manage.manageable && (
+                                      <Button
+                                        icon={<Delete20Regular />}
+                                        disabled={card.processing}
+                                        onClick={() => updateCard(group.id, { confirmRemove: o, confirmRemoveAction: 'Remove Owner' })}
+                                      >
+                                        Remove
+                                      </Button>
+                                    )}
                                   </div>
                                 ))}
                                 {(card.owners ? card.owners.length : 0) === 0 && (

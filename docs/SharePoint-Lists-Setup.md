@@ -68,7 +68,7 @@ flow performs the Microsoft Graph change and writes the result back. All columns
 | Column (internal name) | Type | Filled by | Notes |
 |---|---|---|---|
 | `Title` *(built-in)* | Single line of text | App | Label, e.g. "Add Member: Jane Doe". |
-| `Action` | **Choice** | App | Exact values: **`Add Member`**, **`Remove Member`**. |
+| `Action` | **Choice** | App | Exact values: **`Add Member`**, **`Remove Member`**, **`Add Owner`**, **`Remove Owner`**. (Owner values are used only by O365 groups and need `Group.ReadWrite.All` on the flow — see the Flow spec.) |
 | `GroupId` | Single line of text | App | Target O365 group **GUID** the flow acts on. |
 | `GroupName` | Single line of text | App | Group display name. |
 | `MemberId` | Single line of text | App | Target member's Entra object id (GUID). |

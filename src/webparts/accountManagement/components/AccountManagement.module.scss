@@ -346,6 +346,12 @@
   gap: 12px;
 }
 
+.selectedUserActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .membersHeader {
   // In the Members tab the h3 is hidden (the tab label names the panel), so
   // the lone refresh button aligns to the right.

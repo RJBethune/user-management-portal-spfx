@@ -1,4 +1,4 @@
-export type MembershipAction = 'Add Member' | 'Remove Member';
+export type MembershipAction = 'Add Member' | 'Remove Member' | 'Add Owner' | 'Remove Owner';
 
 export interface IUser {
   id: string;

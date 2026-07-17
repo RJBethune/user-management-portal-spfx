@@ -137,7 +137,7 @@
   <thead><tr><th>Column (internal name)</th><th>Type</th><th>Filled by</th><th>Notes</th></tr></thead>
   <tbody>
     <tr><td><code>Title</code> <span class="pill bi">built-in</span></td><td>Single line of text</td><td>App</td><td>e.g. "Add Member: Jane Doe".</td></tr>
-    <tr><td><code>Action</code></td><td>Choice</td><td>App</td><td>Exact values: <strong>Add Member</strong>, <strong>Remove Member</strong>.</td></tr>
+    <tr><td><code>Action</code></td><td>Choice</td><td>App</td><td>Exact values: <strong>Add Member</strong>, <strong>Remove Member</strong>, <strong>Add Owner</strong>, <strong>Remove Owner</strong>. (Owner values: O365 only, need <code>Group.ReadWrite.All</code>.)</td></tr>
     <tr><td><code>GroupId</code></td><td>Single line of text</td><td>App</td><td>Target O365 group <strong>GUID</strong>.</td></tr>
     <tr><td><code>GroupName</code></td><td>Single line of text</td><td>App</td><td>Group display name.</td></tr>
     <tr><td><code>MemberId</code></td><td>Single line of text</td><td>App</td><td>Member's Entra object id (GUID) — the flow uses this for the Graph call.</td></tr>
@@ -198,6 +198,7 @@
 <ul class="tight">
   <li><strong>Trigger:</strong> <em>When an item is created</em> on <code>Group Membership Requests</code>. <strong>Concurrency = 1</strong> (serialize).</li>
   <li><strong>Runs as:</strong> a service account that is <strong>Owner of every managed O365 group</strong>, or an app registration with application permission <strong><code>GroupMember.ReadWrite.All</code></strong>. (The web part itself holds only read scopes — this identity is the elevation.)</li>
+  <li><strong>Owner actions</strong> (Add Owner / Remove Owner) act on the group's owners collection and need the broader <strong><code>Group.ReadWrite.All</code></strong> — <code>GroupMember.ReadWrite.All</code> covers members only. Add and admin-consent it before enabling owner requests.</li>
 </ul>
 
 <h3>Fields the flow reads / writes</h3>
@@ -237,7 +238,18 @@ Body: { "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/{MemberI
 
 Remove Member:
 DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/members/{MemberId}/$ref
-  → treat HTTP 404 "not found" as success (already not a member)</code></pre>
+  → treat HTTP 404 "not found" as success (already not a member)
+
+Add Owner:   (needs Group.ReadWrite.All)
+POST https://graph.microsoft.com/v1.0/groups/{GroupId}/owners/$ref
+Body: { "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/{MemberId}" }
+  → treat HTTP 400 "already exists" as success
+
+Remove Owner:   (needs Group.ReadWrite.All)
+  guard first: GET .../groups/{GroupId}/owners?$count=true  (header ConsistencyLevel: eventual)
+    if only ONE owner → Status = Failed, ResultMessage = "Cannot remove the last owner", no change
+DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/owners/{MemberId}/$ref
+  → treat HTTP 404 "not found" as success (already not an owner)</code></pre>
 <p>On success → <code>Status = Completed</code>. On any other Graph error → <code>Status = Failed</code> with the error in <code>ResultMessage</code>.</p>
 
 <h3>Invariants the web part relies on</h3>
@@ -311,7 +323,7 @@ DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/members/{MemberId}/$ref
   <li>☐ Indexes: <code>User</code> (List 3), <code>GroupId</code> + <code>SiteName</code> (List 4), <code>Status</code> (List 2).</li>
   <li>☐ Request list hardened: requesters Add-items + read-own; only the flow edits <code>Status</code>/<code>Authorization*</code>; version history on.</li>
   <li>☐ Power Automate flow: trigger on the request list; <strong>multi-value authorization re-check</strong>; fail-closed; exact <code>Status</code> casing.</li>
-  <li>☐ Flow identity is Owner of every managed O365 group (or app-registration <code>GroupMember.ReadWrite.All</code>).</li>
+  <li>☐ Flow identity is Owner of every managed O365 group (or app-registration <code>GroupMember.ReadWrite.All</code>; add <code>Group.ReadWrite.All</code> too if you enable owner add/remove).</li>
   <li>☐ Tenant admin approved the web part's Graph scopes: <code>GroupMember.Read.All</code>, <code>User.ReadBasic.All</code>, <code>User.Read.All</code>, <code>ProfilePhoto.Read.All</code> (add <code>Group.Read.All</code> if the group search 403s).</li>
   <li>☐ <em>(Optional)</em> Nightly Site Permissions sync: app registration with <code>Sites.Selected</code>; curated Managed Sites list; sync-only columns added; existing rows set to <code>Source=Manual</code>; soft-delete + failure-scoped sweep; validated in DryRun first.</li>
 </ul>
