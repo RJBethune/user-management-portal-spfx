@@ -992,7 +992,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                         {(() => {
                           const showOwners: boolean = !isSharePointGroup(group.groupId) && manage.manageable && !!(card.owners || card.ownersLoading || card.ownersError);
                           const showSites: boolean = !!(card.sitePerms && card.sitePerms.length);
-                          const keys: string[] = ['members', showOwners ? 'owners' : '', showSites ? 'sites' : ''].filter((k: string) => !!k);
+                          const showRecent: boolean = recentForGroup.length > 0;
+                          const keys: string[] = ['members', showOwners ? 'owners' : '', showSites ? 'sites' : '', showRecent ? 'recent' : ''].filter((k: string) => !!k);
                           const active: string = keys.indexOf(card.activeTab || '') !== -1 ? (card.activeTab as string) : 'members';
                           return (
                             <div className={styles.tabs}>
@@ -1008,6 +1009,11 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 {showSites && (
                                   <button type="button" role="tab" aria-selected={active === 'sites'} className={`${styles.tab} ${active === 'sites' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'sites' })}>
                                     Used On{card.sitePerms ? ` (${card.sitePerms.length})` : ''}
+                                  </button>
+                                )}
+                                {showRecent && (
+                                  <button type="button" role="tab" aria-selected={active === 'recent'} className={`${styles.tab} ${active === 'recent' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'recent' })}>
+                                    Recent Requests ({recentForGroup.length})
                                   </button>
                                 )}
                               </div>
@@ -1149,27 +1155,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           </div>
                         )}
                                 </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        {recentForGroup.length > 0 && (
-                          <div className={styles.subSection}>
-                            <button
-                              type="button"
-                              className={styles.collapseHeader}
-                              onClick={() => updateCard(group.id, { recentOpen: !card.recentOpen })}
-                              aria-expanded={!!card.recentOpen}
-                            >
-                              <h3>Your recent requests ({recentForGroup.length})</h3>
-                              {card.recentOpen ? (
-                                <ChevronUp20Regular className={styles.chevron} />
-                              ) : (
-                                <ChevronDown20Regular className={styles.chevron} />
-                              )}
-                            </button>
-                            {card.recentOpen && (
+                                <div hidden={active !== 'recent'}>
                               <div className={styles.recentScroll}>
                                 <div className={styles.recentList}>
                                   {recentForGroup.map((r: IRequestSummary) => {
@@ -1216,9 +1202,11 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                   })}
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </article>
