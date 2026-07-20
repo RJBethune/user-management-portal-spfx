@@ -1,8 +1,9 @@
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
-import { Version } from '@microsoft/sp-core-library';
+import { Version, DisplayMode } from '@microsoft/sp-core-library';
 import {
   IPropertyPaneConfiguration,
+  PropertyPaneLabel,
   PropertyPaneTextField,
   PropertyPaneSlider,
   PropertyPaneToggle
@@ -70,7 +71,7 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.10.0';
+  public static readonly buildVersion: string = '1.11.0';
 
   private _theme: IReadonlyTheme | undefined;
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
@@ -123,7 +124,9 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
           startCollapsed: !!this.properties.startCollapsed,
           sectionTheme: this._theme,
           requireJustification: !!this.properties.requireJustification,
-          showGroupPhotos: this.properties.showGroupPhotos !== false
+          showGroupPhotos: this.properties.showGroupPhotos !== false,
+          // Schema warnings are shown only while the page is being edited — the audience who can fix them.
+          isEditMode: this.displayMode === DisplayMode.Edit
         })
       );
       ReactDom.render(element, this.domElement);
@@ -182,6 +185,10 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
             {
               groupName: 'Data source (lists)',
               groupFields: [
+                PropertyPaneLabel('listSchemaHelp', {
+                  text:
+                    'While this page is in edit mode, the web part itself reports any missing list or mistyped column — check the canvas for a setup panel or schema banner.'
+                }),
                 PropertyPaneTextField('listSiteUrl', {
                   label: 'List site URL (optional)',
                   description:

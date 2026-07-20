@@ -4,6 +4,12 @@ Build these **4 SharePoint lists by hand** (this tenant blocks PnP, so there is 
 script — this spec is the source of truth). The web part reads/writes them at runtime via the
 signed-in user; a Power Automate flow processes the O365 requests.
 
+> **The web part self-checks this schema at runtime.** If a required list is missing it renders a
+> **setup panel** (exact list title, column table, and creation steps) instead of a bare "not found"
+> error. If columns are missing or the wrong type, it shows a banner **only while the page is in edit
+> mode** — ordinary viewers never see plumbing warnings. It also catches the classic trap of a column
+> created with a space in its name (`Group Id` → internal name `Group_x0020_Id`) and says so.
+
 ---
 
 ## ⚠️ Read this first — 5 rules that will save you a broken deployment

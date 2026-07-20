@@ -29,6 +29,8 @@ import {
 import { buildFluentTheme } from './theme';
 import styles from './AccountManagement.module.scss';
 import { IAccountManagementProps } from './IAccountManagementProps';
+import ListHealthPanel from './ListHealthPanel';
+import { IListHealth } from '../models/listSchema';
 import { ConfirmDialog } from './ConfirmDialog';
 import { GraphService } from '../services/GraphService';
 import { AccountManagementService } from '../services/AccountManagementService';
@@ -158,6 +160,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const [groupSearch, setGroupSearch] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(true);
   const [topError, setTopError] = React.useState<string | undefined>(undefined);
+  const [health, setHealth] = React.useState<IListHealth[] | undefined>(undefined);
   const [cards, setCards] = React.useState<{ [id: number]: ICardState }>({});
   const [recent, setRecent] = React.useState<IRequestSummary[]>([]);
   const [printing, setPrinting] = React.useState<boolean>(false);
@@ -333,6 +336,29 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       updateCard(group.id, { sitePerms: [], sitePermsLoading: false });
     }
   };
+
+  // Self-diagnosing schema check: probe the configured lists once so the UI can degrade
+  // gracefully and (in edit mode) say exactly what to fix. Never blocks the main load.
+  React.useEffect(() => {
+    let cancelled: boolean = false;
+    spService.current
+      .checkListHealth()
+      .then((h: IListHealth[]) => {
+        if (!cancelled) {
+          setHealth(h);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    props.listConfig.groupListTitle,
+    props.listConfig.requestListTitle,
+    props.listConfig.authorizedAdminsListTitle,
+    props.listConfig.sitePermissionsListTitle,
+    props.listConfig.listSiteUrl
+  ]);
 
   // Load site permissions for any expanded group; members + owners for manageable ones.
   React.useEffect(() => {
@@ -660,6 +686,11 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     <div className={styles.diagnosticBadge}>365 Account Management v{props.buildVersion}</div>
   );
 
+  // A missing required list is explained by the setup panel, so don't also show the raw
+  // "a required SharePoint list was not found" error on top of it.
+  const missingRequiredList: boolean =
+    !!health && health.filter((h: IListHealth) => !h.exists && !h.optional && !h.error).length > 0;
+
   if (loading) {
     return (
       <FluentProvider theme={theme} style={{ background: 'transparent' }}>
@@ -679,6 +710,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       <FluentProvider theme={theme} style={{ background: 'transparent' }}>
         <section className={styles.accountManagement}>
           {versionBadge}
+          {health && <ListHealthPanel health={health} isEditMode={props.isEditMode} />}
           <MessageBar intent="info" layout="multiline">
             <MessageBarBody>
               {scopedOut
@@ -721,7 +753,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           )}
         </div>
 
-        {topError && (
+        {health && <ListHealthPanel health={health} isEditMode={props.isEditMode} />}
+
+        {topError && !missingRequiredList && (
           <MessageBar intent="error" politeness="assertive" layout="multiline">
             <MessageBarBody>{topError}</MessageBarBody>
           </MessageBar>

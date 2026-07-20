@@ -225,6 +225,70 @@
   }
 }
 
+// Self-diagnosing setup guidance: a missing required list renders a real setup panel;
+// column problems render a banner (edit mode only — see ListHealthPanel).
+.setupPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.setupList {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+
+  h3 {
+    font-size: 15px;
+    font-weight: 650;
+    margin: 0 0 4px;
+  }
+}
+
+.setupTable {
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+  width: 100%;
+
+  th,
+  td {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    color: #605e5c;
+    font-weight: 650;
+  }
+}
+
+.setupSteps {
+  font-size: 13px;
+  margin: 0;
+  padding-left: 20px;
+
+  li {
+    margin-bottom: 4px;
+  }
+}
+
+.schemaIssueGroup {
+  margin-top: 8px;
+
+  ul {
+    margin: 4px 0 0;
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 3px;
+  }
+}
+
 .personRow {
   align-items: center;
   background: #fff;

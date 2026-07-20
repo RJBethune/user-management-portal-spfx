@@ -13,6 +13,15 @@ import {
   MembershipAction
 } from '../models/types';
 import { toMessage } from '../shared/errors';
+import {
+  EXPECTED_LISTS,
+  findLookalike,
+  IColumnIssue,
+  IExpectedColumn,
+  IExpectedList,
+  IListHealth,
+  ListKey
+} from '../models/listSchema';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -71,6 +80,73 @@ export class AccountManagementService {
     } catch {
       return base;
     }
+  }
+
+  /**
+   * Probe each configured list's columns and compare them to the expected schema.
+   * Never throws: a missing or unreadable list comes back flagged so the UI can degrade
+   * gracefully and (in page edit mode) explain exactly what to fix.
+   */
+  public async checkListHealth(): Promise<IListHealth[]> {
+    const titleFor = (key: ListKey): string =>
+      key === 'groups'
+        ? this._config.groupListTitle
+        : key === 'admins'
+        ? this._config.authorizedAdminsListTitle
+        : key === 'requests'
+        ? this._config.requestListTitle
+        : this._config.sitePermissionsListTitle;
+
+    return Promise.all(
+      EXPECTED_LISTS.map(async (spec: IExpectedList): Promise<IListHealth> => {
+        const title: string = titleFor(spec.key) || '';
+        const health: IListHealth = { key: spec.key, title: title, optional: !!spec.optional, exists: false, issues: [] };
+        if (!title) {
+          health.error = 'No list title is configured.';
+          return health;
+        }
+        const url: string =
+          `${this._webUrl}/_api/web/lists/getbytitle('${title.replace(/'/g, "''")}')/fields` +
+          `?$select=InternalName,TypeAsString&$top=500`;
+        try {
+          const resp: SPHttpClientResponse = await this._context.spHttpClient.get(url, SPHttpClient.configurations.v1);
+          if (resp.status === 404) {
+            return health; // list does not exist — `exists` stays false
+          }
+          if (!resp.ok) {
+            health.error = `Could not read the list schema (HTTP ${resp.status}).`;
+            return health;
+          }
+          const json: any = await resp.json();
+          const fields: any[] = (json && json.value) || [];
+          health.exists = true;
+          const names: string[] = fields.map((f: any) => f.InternalName);
+          const typeOf: { [name: string]: string } = {};
+          fields.forEach((f: any) => {
+            typeOf[f.InternalName] = f.TypeAsString;
+          });
+          spec.columns.forEach((col: IExpectedColumn) => {
+            const actual: string | undefined = typeOf[col.name];
+            if (actual === undefined) {
+              if (!col.optional) {
+                const issue: IColumnIssue = { column: col.name, expected: col.label, kind: 'missing' };
+                const lookalike: string | undefined = findLookalike(col.name, names);
+                if (lookalike) {
+                  issue.lookalike = lookalike;
+                }
+                health.issues.push(issue);
+              }
+            } else if (col.types.indexOf(actual) === -1) {
+              health.issues.push({ column: col.name, expected: col.label, actual: actual, kind: 'type' });
+            }
+          });
+          return health;
+        } catch (e) {
+          health.error = toMessage(e, 'Could not read the list schema.');
+          return health;
+        }
+      })
+    );
   }
 
   public async getAuthorizedGroups(): Promise<IOfficeGroup[]> {

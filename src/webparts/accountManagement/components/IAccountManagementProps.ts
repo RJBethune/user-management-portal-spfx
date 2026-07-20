@@ -22,6 +22,8 @@ export interface IAccountManagementProps {
   requireJustification: boolean;
   /** Load and show real M365 group photos (lazily, on expand); off = always use the initials tile. */
   showGroupPhotos: boolean;
+  /** True while the page is in edit mode — gates schema/plumbing warnings to people who can fix them. */
+  isEditMode: boolean;
   /** SharePoint section theme, mapped onto Fluent v9 tokens (supports dark/inverted sections). */
   sectionTheme?: IReadonlyTheme;
 }
