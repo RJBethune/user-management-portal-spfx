@@ -4,8 +4,7 @@ This is the **app-side contract** the flow must satisfy. It only handles **O365 
 SharePoint site-group changes are applied directly by the web part (not via Graph), but they ARE still logged
 to this same list as **`Status = Completed`** audit rows, so the flow MUST skip any non-Pending row (see the
 guard in section 1) or it will re-process them and fail. Reconcile with
-your existing flow build notes; **the one thing that changed in this release is the authorization re-check**
-(Authorized Admins is now one row per admin with a **multi-value** group lookup — see §4/§7).
+your existing flow build notes; the flow-side changes for the current release (v1.11.0) are summarized in **§7**.
 
 ---
 
@@ -125,15 +124,23 @@ On success → `Status = Completed`, `ResultMessage` = e.g. "Added"/"Removed".
 5. **Idempotent** — tolerate already-member / not-member (see §5).
 6. Only the flow identity should be able to edit `Status`/`Authorization*` (list permissions).
 
-## 7. What changed in this update (v1.8.0)
-- `OfficeGroupRecord` on **Group Management Authorized Admins** went from a **single-value** lookup
-  (one row per admin+group) to a **multi-value** lookup (**one row per admin**, many groups).
-- **§4 is the only flow change:** `$expand` the multi-value `OfficeGroupRecord`, filter by `UserId eq {AuthorId}`,
-  and test whether the request's `GroupId` is **in** the requester's collection — instead of matching a single
-  `OfficeGroupRecord/GroupId`.
-- Trigger, Graph actions (§5), write-back (§3), and all invariants (§6) are **unchanged**.
-- The web part reads **both** list layouts, so you can migrate the list gradually — but the flow's §4 check and
-  the list's multi-value column must change **together**, or O365 requests will fail their authorization step.
+## 7. What changed — flow work for the current release (v1.11.0)
+
+**NEW — owner management (needs a new Graph permission).** The web part now files `Add Owner` and
+`Remove Owner` requests (O365 groups only). To make them work the flow must:
+- Handle the two new `Action` values (§2) with the group **owners** Graph calls in §5.
+- Run the **last-owner guard** before every Remove Owner (§5) — never leave a group ownerless.
+- Use **`Group.ReadWrite.All`** for owner calls — `GroupMember.ReadWrite.All` covers members only (§1). Add and
+  admin-consent this scope **before** enabling owner requests, or owner rows fail with an authorization error.
+- Member add/remove branches (§5) are unchanged; owner requests reach the flow through the same trigger, carry
+  the same fields (§2), and write back the same way (§3) — only the perform-change branch and permission differ.
+
+**Still required from v1.8.0 — the multi-value authorization re-check (§4).** Authorized Admins is one row per
+admin with a **multi-value** `OfficeGroupRecord`; §4 `$expand`s it, filters by `UserId eq {AuthorId}`, and tests
+whether the request's `GroupId` is **in** the requester's set. The list's multi-value column and the flow's §4
+check must change **together**. The web part reads both list layouts, so the list can migrate gradually.
+
+**Unchanged:** the trigger + `Status = Pending` guard (§1), write-back (§3), and all invariants (§6).
 
 ---
 
