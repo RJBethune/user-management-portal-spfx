@@ -4,7 +4,7 @@ This is the **app-side contract** the flow must satisfy. It only handles **O365 
 SharePoint site-group changes are applied directly by the web part (not via Graph), but they ARE still logged
 to this same list as **`Status = Completed`** audit rows, so the flow MUST skip any non-Pending row (see the
 guard in section 1) or it will re-process them and fail. Reconcile with
-your existing flow build notes; the flow-side changes for the current release (v1.11.0) are summarized in **§7**.
+your existing flow build notes; the flow-side work still outstanding (owner add/remove) is summarized in **§7**.
 
 ---
 
@@ -124,10 +124,11 @@ On success → `Status = Completed`, `ResultMessage` = e.g. "Added"/"Removed".
 5. **Idempotent** — tolerate already-member / not-member (see §5).
 6. Only the flow identity should be able to edit `Status`/`Authorization*` (list permissions).
 
-## 7. What changed — flow work for the current release (v1.11.0)
+## 7. Flow work outstanding — owner add/remove (web part v1.10.0)
 
-**NEW — owner management (needs a new Graph permission).** The web part now files `Add Owner` and
-`Remove Owner` requests (O365 groups only). To make them work the flow must:
+**Owner management (needs a new Graph permission).** The web part files `Add Owner` and
+`Remove Owner` requests (O365 groups only; shipped in the web part at **v1.10.0**, flow side still to do). To
+make them work the flow must:
 - Handle the two new `Action` values (§2) with the group **owners** Graph calls in §5.
 - Run the **last-owner guard** before every Remove Owner (§5) — never leave a group ownerless.
 - Use **`Group.ReadWrite.All`** for owner calls — `GroupMember.ReadWrite.All` covers members only (§1). Add and
@@ -139,6 +140,10 @@ On success → `Status = Completed`, `ResultMessage` = e.g. "Added"/"Removed".
 admin with a **multi-value** `OfficeGroupRecord`; §4 `$expand`s it, filters by `UserId eq {AuthorId}`, and tests
 whether the request's `GroupId` is **in** the requester's set. The list's multi-value column and the flow's §4
 check must change **together**. The web part reads both list layouts, so the list can migrate gradually.
+
+**No flow change for v1.11.0.** v1.11.0 is the web part's self-diagnosing list-health check — it validates the
+SharePoint list schema and shows setup guidance to page editors. It reads list metadata only and needs nothing
+from the flow.
 
 **Unchanged:** the trigger + `Status = Pending` guard (§1), write-back (§3), and all invariants (§6).
 

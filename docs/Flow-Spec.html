@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>365 Account Management — Power Automate Flow Spec</title>
+<style>
+  :root{
+    --ink:#1b1f24; --muted:#5b6570; --line:#dfe3e8; --brand:#0b4a8f; --brand-d:#083a70;
+    --code-bg:#f5f7fa; --th:#eef3fb; --zebra:#fafbfc;
+    --warn-b:#f6c445; --warn-bg:#fff8e6; --crit-b:#c50f1f; --crit-bg:#fdf3f4;
+    --info-b:#3b7ddd; --info-bg:#eef4fd; --tip-b:#2f9e44; --tip-bg:#effaf1;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;color:var(--ink);background:#f0f2f5;
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 22px 80px;background:#fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  header.top{border-bottom:3px solid var(--brand);padding-bottom:16px;margin-bottom:8px}
+  header.top h1{font-size:28px;margin:0 0 4px;color:var(--brand-d);letter-spacing:-.2px}
+  header.top .sub{color:var(--muted);font-size:15px;margin:0}
+  header.top .meta{color:var(--muted);font-size:13px;margin:8px 0 0}
+  h2{font-size:22px;color:var(--brand-d);margin:38px 0 6px;padding-top:8px;border-top:1px solid var(--line)}
+  h3{font-size:17px;margin:22px 0 6px;color:#12335c}
+  h4{font-size:15px;margin:16px 0 4px;color:#12335c}
+  p{margin:8px 0}
+  a{color:var(--brand)}
+  code{font-family:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;font-size:.9em;
+    background:var(--code-bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;
+    padding:12px 14px;overflow:auto;margin:10px 0}
+  pre code{background:none;border:0;padding:0;font-size:13px;line-height:1.5;white-space:pre}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--th);color:#12335c;font-weight:650}
+  tbody tr:nth-child(even){background:var(--zebra)}
+  td code{white-space:nowrap}
+  .pill{display:inline-block;font-size:11px;font-weight:700;line-height:1;padding:3px 7px;border-radius:20px;
+    vertical-align:middle}
+  .req{background:#fde7e9;color:#a4262c}
+  .opt{background:#e9eef5;color:#3a5470}
+  .new{background:#e7f1ea;color:#2f6b3d}
+  .callout{border-left:4px solid var(--info-b);background:var(--info-bg);padding:12px 14px;margin:14px 0;border-radius:0 6px 6px 0}
+  .callout.warn{border-color:var(--warn-b);background:var(--warn-bg)}
+  .callout.crit{border-color:var(--crit-b);background:var(--crit-bg)}
+  .callout.tip{border-color:var(--tip-b);background:var(--tip-bg)}
+  .callout p{margin:4px 0}
+  .callout strong{color:#12335c}
+  nav.toc{background:#fafbfc;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:18px 0 6px}
+  nav.toc h2{border:0;margin:0 0 6px;padding:0;font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  nav.toc ol{margin:6px 0 0;padding-left:20px;columns:2;column-gap:28px}
+  nav.toc li{margin:3px 0;break-inside:avoid}
+  .lead{font-size:16px;color:#333}
+  ul.tight li{margin:4px 0}
+  hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+  footer{color:var(--muted);font-size:13px;margin-top:36px;border-top:1px solid var(--line);padding-top:12px}
+  @media(max-width:700px){nav.toc ol{columns:1}}
+  @media print{
+    body{background:#fff}.wrap{box-shadow:none;max-width:none;padding:0}
+    nav.toc{break-inside:avoid}h2{break-after:avoid}table{break-inside:auto}tr{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>365 Account Management — Power Automate Flow Spec</h1>
+  <p class="sub">The app-side contract the flow must satisfy for Microsoft 365 (GUID) group requests.</p>
+  <p class="meta">Mirrors <code>docs/PowerAutomate-Flow-Spec.md</code>. The web part holds read-only Graph scopes; this flow is the elevation that performs the change.</p>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#trigger">1. Trigger &amp; identity</a></li>
+    <li><a href="#reads">2. Fields the flow reads</a></li>
+    <li><a href="#writes">3. Fields the flow writes back</a></li>
+    <li><a href="#authz">4. Authorization re-check</a></li>
+    <li><a href="#perform">5. Perform the change</a></li>
+    <li><a href="#invariants">6. Invariants</a></li>
+    <li><a href="#outstanding">7. Flow work outstanding (owners)</a></li>
+    <li><a href="#sync">8. Nightly sync (optional)</a></li>
+  </ol>
+</nav>
+
+<h2 id="overview">Overview</h2>
+<p class="lead">This flow handles <strong>Microsoft 365 (GUID) group</strong> requests only. SharePoint
+site-group changes are applied <em>directly</em> by the web part (not via Graph).</p>
+<div class="callout warn">
+  <p><strong>SharePoint-direct changes still land in this list</strong> as <code>Status = Completed</code> audit
+  rows. The flow must <strong>skip any non-Pending row</strong> (see the guard in §1) or it re-processes them,
+  the Graph call fails on the SharePoint group's integer <code>GroupId</code>, and it overwrites
+  <code>Status</code> to <code>Failed</code> — the user sees "Completed, then Failed."</p>
+</div>
+
+<h2 id="trigger">1. Trigger &amp; identity</h2>
+<ul class="tight">
+  <li><strong>Trigger:</strong> <em>When an item is created</em> on the <strong>Group Membership Requests</strong> list (the request/audit list).</li>
+  <li><strong>Concurrency:</strong> Degree of Parallelism = <strong>1</strong> (serialize; avoids interleaving on the same group).</li>
+  <li><strong>Runs as:</strong> a service account that is <strong>Owner of every managed O365 group</strong>, or an app registration with application permission <strong><code>GroupMember.ReadWrite.All</code></strong>. (The web part itself holds only read scopes — this identity is the elevation.)</li>
+</ul>
+<div class="callout crit">
+  <p><strong>FIRST ACTION (required) — guard on Status.</strong> If <code>Status</code> is <strong>not</strong>
+  <code>Pending</code>, <strong>terminate immediately</strong> (do nothing / Cancelled). Only
+  <code>Status = Pending</code> rows are real O365 work. Without this guard the flow re-processes the
+  SharePoint-direct <code>Completed</code> audit rows and fails them. (Optionally also skip when
+  <code>GroupId</code> is not a GUID, as belt-and-suspenders.)</p>
+</div>
+<div class="callout crit">
+  <p><strong>Owner actions need a broader scope.</strong> <code>Add Owner</code> / <code>Remove Owner</code>
+  (§5) act on the group's <strong>owners</strong> collection, which requires
+  <strong><code>Group.ReadWrite.All</code></strong> (delegated or application) —
+  <code>GroupMember.ReadWrite.All</code> covers <em>members only</em>. Add and admin-consent
+  <code>Group.ReadWrite.All</code> on the flow identity <strong>before</strong> enabling owner requests, or those
+  rows fail with an authorization error.</p>
+</div>
+
+<h2 id="reads">2. Request item — fields the flow READS</h2>
+<table>
+  <thead><tr><th>Field (internal name)</th><th>Type</th><th>Use</th></tr></thead>
+  <tbody>
+    <tr><td><code>Action</code></td><td>Choice</td><td><code>Add Member</code>, <code>Remove Member</code>, <code>Add Owner</code>, or <code>Remove Owner</code> (exact, case-sensitive).</td></tr>
+    <tr><td><code>GroupId</code></td><td>Text</td><td><strong>Target O365 group object id (GUID)</strong> — the group to change.</td></tr>
+    <tr><td><code>MemberId</code></td><td>Text</td><td><strong>The person's Entra object id (GUID)</strong> — used for the Graph call. Owner ops reuse this same field (there is no separate OwnerId).</td></tr>
+    <tr><td><code>MemberDisplayName</code>, <code>GroupName</code></td><td>Text</td><td>Display / logging only.</td></tr>
+    <tr><td><code>TargetUserPrincipalName</code>, <code>TargetUserEmail</code></td><td>Text</td><td>Member UPN / email (verification / fallback).</td></tr>
+    <tr><td><code>Author</code> (Created By) &rarr; <code>AuthorId</code></td><td>Person</td><td><strong>The requester. The ONLY trusted identity for authorization.</strong></td></tr>
+    <tr><td><code>CorrelationId</code></td><td>Text</td><td>Correlate the row to the web part submission / flow run.</td></tr>
+    <tr><td><code>Justification</code></td><td>Multi-line</td><td>Reason (audit).</td></tr>
+  </tbody>
+</table>
+<div class="callout crit">
+  <p><strong>Never authorize on client-writable fields</strong> (<code>RequestedBy</code>/<code>RequestedById</code>,
+  <code>OfficeGroupRecordId</code>, or <code>GroupId</code> as a trust anchor). Only
+  <code>Author</code>/<code>AuthorId</code> is server-stamped and trustworthy.</p>
+</div>
+
+<h2 id="writes">3. Request item — fields the flow WRITES back</h2>
+<table>
+  <thead><tr><th>Field</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>Status</code></td><td><strong><code>Completed</code></strong> or <strong><code>Failed</code></strong> — exact casing (the web part polls for these literally; a mis-cased value hangs the UI at timeout).</td></tr>
+    <tr><td><code>ResultMessage</code></td><td>Outcome or error text.</td></tr>
+    <tr><td><code>AuthorizationChecked</code></td><td>Yes/No.</td></tr>
+    <tr><td><code>AuthorizationResult</code></td><td>Authorization outcome text.</td></tr>
+  </tbody>
+</table>
+<div class="callout">
+  <p><strong>Invariant:</strong> no path may leave <code>Status = Pending</code>. Every branch (authorized,
+  not-authorized, Graph error, exception) must end by writing a terminal <code>Status</code>.</p>
+</div>
+
+<h2 id="authz">4. Authorization re-check <span class="pill new">multi-value</span></h2>
+<p>The <strong>Group Management Authorized Admins</strong> list is <strong>one row per admin</strong>, and
+<code>OfficeGroupRecord</code> is a <strong>multi-value lookup</strong> into Managed Groups (an admin's whole
+group set is on one row). Authorize like this:</p>
+
+<h3>4a — resolve the requester's SharePoint user id</h3>
+<p>Read the created item's numeric <code>AuthorId</code>:</p>
+<pre><code>GET {listsSite}/_api/web/lists/getbytitle('Group Membership Requests')/items({ID})?$select=AuthorId</code></pre>
+
+<h3>4b — read the requester's authorized groups (expanding the multi-value lookup)</h3>
+<pre><code>GET {listsSite}/_api/web/lists/getbytitle('Group Management Authorized Admins')/items
+    ?$select=Id,OfficeGroupRecord/GroupId
+    &amp;$expand=OfficeGroupRecord
+    &amp;$filter=UserId eq {AuthorId}
+Header:  Accept: application/json;odata=nometadata</code></pre>
+<div class="callout warn">
+  <p>Filter by <strong><code>UserId</code></strong> (the single-value <code>User</code> Person column —
+  filterable, indexed), <strong>not</strong> by the group. SharePoint can't reliably <code>$filter</code> a
+  <em>multi-value</em> lookup's sub-field, so you fetch the requester's row(s) and test group membership
+  <strong>inside the flow</strong>.</p>
+</div>
+
+<h3>4c — test membership</h3>
+<p>Build the set of <strong>all</strong> <code>OfficeGroupRecord[].GroupId</code> values across the returned
+row(s). The request is <strong>authorized</strong> iff the request item's <code>GroupId</code> is in that set
+(case-insensitive GUID compare). Under <code>odata=nometadata</code>, <code>OfficeGroupRecord</code> is a plain
+<strong>array</strong> per row; under <code>odata=verbose</code> it is <code>{ "results": [ … ] }</code>.</p>
+<ul class="tight">
+  <li><strong>Authorized &rarr;</strong> proceed to §5; set <code>AuthorizationChecked = Yes</code>, <code>AuthorizationResult = "Authorized"</code>.</li>
+  <li><strong>Not authorized</strong> (group not in the set, or no rows) &rarr; <strong>fail closed:</strong> <code>AuthorizationChecked = Yes</code>, <code>AuthorizationResult = "Requester not authorized for this group"</code>, <code>Status = Failed</code>, clear <code>ResultMessage</code>. <strong>Make no Graph call.</strong></li>
+</ul>
+
+<h2 id="perform">5. Perform the change (only if authorized)</h2>
+<p>Using <code>GroupId</code> (target group) and <code>MemberId</code> (the person's object id):</p>
+<pre><code>Add Member:
+POST https://graph.microsoft.com/v1.0/groups/{GroupId}/members/$ref
+Body: { "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/{MemberId}" }
+  &rarr; treat HTTP 400 "already exists" as success (idempotent)
+
+Remove Member:
+DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/members/{MemberId}/$ref
+  &rarr; treat HTTP 404 "not found" as success (already not a member)
+
+Add Owner:   (needs Group.ReadWrite.All)
+POST https://graph.microsoft.com/v1.0/groups/{GroupId}/owners/$ref
+Body: { "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/{MemberId}" }
+  &rarr; treat HTTP 400 "already exists" as success
+  (an owner should also be a member — optionally also POST to /members/$ref)
+
+Remove Owner:   (needs Group.ReadWrite.All)
+  GUARD FIRST: GET .../groups/{GroupId}/owners?$count=true   (header ConsistencyLevel: eventual)
+    if only ONE owner &rarr; Status = Failed, ResultMessage = "Cannot remove the last owner", no change
+DELETE https://graph.microsoft.com/v1.0/groups/{GroupId}/owners/{MemberId}/$ref
+  &rarr; treat HTTP 404 "not found" as success (already not an owner)</code></pre>
+<div class="callout warn">
+  <p><strong>Never leave a group ownerless.</strong> Run the last-owner count <em>before</em> the Remove Owner
+  DELETE, and refuse when it would drop the final owner.</p>
+</div>
+<p>On any other Graph error &rarr; <code>Status = Failed</code>, <code>ResultMessage</code> = the Graph error.
+On success &rarr; <code>Status = Completed</code>, <code>ResultMessage</code> = e.g. "Added" / "Removed".</p>
+
+<h2 id="invariants">6. Invariants (contract the web part relies on)</h2>
+<ol class="tight">
+  <li><strong>Authorize on <code>AuthorId</code> only</strong> (server-stamped Created By); ignore all client-writable fields for security.</li>
+  <li><strong>Fail closed</strong> — any error, missing row, or ambiguity &rarr; <code>Status = Failed</code>, no Graph call.</li>
+  <li><strong>Exact Status casing</strong> — <code>Completed</code> / <code>Failed</code> (never <code>Complete</code>, <code>Success</code>, etc.).</li>
+  <li><strong>No row left <code>Pending</code></strong> — every branch writes a terminal status. (A scheduled "sweep" flow that fails stale <code>Pending</code> rows older than N minutes is recommended as a backstop.)</li>
+  <li><strong>Idempotent</strong> — tolerate already-member / not-member (see §5).</li>
+  <li>Only the flow identity should be able to edit <code>Status</code> / <code>Authorization*</code> (list permissions).</li>
+</ol>
+
+<h2 id="outstanding">7. Flow work outstanding — owner add/remove <span class="pill new">web part v1.10.0</span></h2>
+<p><strong>Owner management (needs a new Graph permission).</strong> The web part files <code>Add Owner</code> and
+<code>Remove Owner</code> requests (O365 groups only; shipped in the web part at <strong>v1.10.0</strong>, flow
+side still to do). To make them work the flow must:</p>
+<ul class="tight">
+  <li>Handle the two new <code>Action</code> values (§2) with the group <strong>owners</strong> Graph calls in §5.</li>
+  <li>Run the <strong>last-owner guard</strong> before every Remove Owner (§5) — never leave a group ownerless.</li>
+  <li>Use <strong><code>Group.ReadWrite.All</code></strong> for owner calls — <code>GroupMember.ReadWrite.All</code> covers members only (§1). Add and admin-consent it <strong>before</strong> enabling owner requests.</li>
+  <li>Member add/remove branches are unchanged; owner requests reach the flow through the <strong>same trigger</strong>, carry the <strong>same fields</strong> (§2), and write back the <strong>same way</strong> (§3) — only the perform-change branch and permission differ.</li>
+</ul>
+<div class="callout tip">
+  <p><strong>Verified against the web part.</strong> The web part writes the <code>Action</code> value verbatim,
+  so the flow's switch matches on the exact strings <code>Add Owner</code> / <code>Remove Owner</code>. Owner and
+  member requests are the identical payload — only the <code>Action</code> string differs — so there is no new
+  field for the flow to read.</p>
+</div>
+<p><strong>Still required from v1.8.0 — the multi-value authorization re-check (§4).</strong> The list's
+multi-value <code>OfficeGroupRecord</code> column and the flow's §4 check must change <strong>together</strong>.
+The web part reads both list layouts, so the list can migrate gradually.</p>
+<div class="callout">
+  <p><strong>No flow change for v1.11.0.</strong> v1.11.0 is the web part's self-diagnosing list-health check —
+  it validates the SharePoint list schema and shows setup guidance to page editors. It reads list metadata only
+  and needs nothing from the flow.</p>
+</div>
+
+<h2 id="sync">8. Nightly Group Site Permissions sync <span class="pill opt">optional, separate flow</span></h2>
+<p>A scheduled flow can keep the <strong>Group Site Permissions</strong> list current instead of hand-maintaining
+it, by discovering which sites each managed group has permissions on. This is a <strong>separate flow</strong>
+from the request flow above.</p>
+<ul class="tight">
+  <li><strong>Identity &amp; scope.</strong> A dedicated app registration with <strong><code>Sites.Selected</code></strong>, using an app-only bearer token (gov endpoints <code>login.microsoftonline.us</code> / <code>*.sharepoint.us</code>) passed as an explicit <code>Authorization</code> header on raw SharePoint REST calls. Scan a <strong>curated "Managed Sites" list</strong>, never the whole tenant.</li>
+  <li><strong>Sync-only columns</strong> (the web part ignores them): <code>Source</code> (Choice Auto|Manual), <code>SyncKey</code>, <code>LastSyncedRunId</code>, <code>SyncStatus</code>, <code>StaleRuns</code>, <code>LastSyncedUtc</code>.</li>
+  <li><strong>Per site (root web):</strong> read <code>roleAssignments</code> ($expand Member, RoleDefinitionBindings); match group principals to Managed Groups <code>GroupId</code>s by claim prefix (<code>c:0t.c|tenant|</code> = security group, <code>c:0o.c|federateddirectoryclaimprovider|</code> = M365, strip trailing <code>_o</code>); for each <code>PrincipalType=8</code> SharePoint site group, also read <code>sitegroups(&lt;id&gt;)/users</code> (most grants are nested); <code>Permission</code> = highest role, dropping "Limited Access"; diff vs existing <code>Auto</code> rows and upsert via <code>$batch</code>.</li>
+  <li><strong>Reconcile (soft delete).</strong> Unstamped <code>Auto</code> rows &rarr; <code>SyncStatus=Stale</code>, <code>StaleRuns++</code>; hard-delete only at <code>StaleRuns &gt;= 3</code>. <strong>Abort</strong> if any site GET failed or the stale set exceeds ~50%. Every query/write/delete is filtered <code>Source eq 'Auto'</code>, so hand-entered <code>Manual</code> rows are never touched.</li>
+  <li><strong>Known limits:</strong> site root web only; Site Collection Admins do not appear in role assignments; one level of group nesting.</li>
+</ul>
+<p>See <strong>Setup-Guide.html &rarr; "Nightly sync"</strong> for the full walkthrough.</p>
+
+<footer>
+  365 Account Management — Power Automate Flow Spec. Mirrors <code>docs/PowerAutomate-Flow-Spec.md</code>.
+  Handles Microsoft 365 (GUID) group requests only; SharePoint site-group changes are applied directly by the web part.
+</footer>
+
+</div>
+</body>
+</html>
