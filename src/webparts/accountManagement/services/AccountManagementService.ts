@@ -554,20 +554,61 @@ export class AccountManagementService {
     if (!groupId) {
       return [];
     }
-    const select: string = ['Id', 'SiteName', 'SiteUrl', 'Permission'].join(',');
-    const url: string =
-      `${this._webUrl}/_api/web/lists/getbytitle('${this._config.sitePermissionsListTitle}')/items` +
-      `?$select=${select}&$filter=GroupId eq '${encodeURIComponent(groupId)}'&$orderby=SiteName&$top=500`;
-    try {
-      const items: any[] = (await this._get(url)).value || [];
-      return items.map((e: any): ISitePermission => ({
+    const select: string = ['Id', 'SiteName', 'SiteUrl', 'Permission', 'GroupId'].join(',');
+    const base: string = `${this._webUrl}/_api/web/lists/getbytitle('${this._config.sitePermissionsListTitle}')/items`;
+    const map = (items: any[]): ISitePermission[] =>
+      items.map((e: any): ISitePermission => ({
         siteName: e.SiteName || (e.SiteUrl && e.SiteUrl.Description) || '(site)',
         siteUrl: (e.SiteUrl && e.SiteUrl.Url) || (typeof e.SiteUrl === 'string' ? e.SiteUrl : undefined),
         permission: e.Permission || ''
       }));
-    } catch {
-      return []; // optional feature — list may not be provisioned yet, or no read access
+
+    // SharePoint's $filter string compare is CASE-SENSITIVE, and GUIDs are commonly stored in a
+    // different case than Graph returns (hand-entered rows are often upper-case, sometimes wrapped
+    // in braces). A server-side equality filter therefore silently matches nothing even though the
+    // rows exist. Filter server-side first (fast, indexed), then fall back to a client-side
+    // case-insensitive match so a case/format mismatch degrades to "slower" instead of "empty".
+    const wanted: string = this._normalizeGuid(groupId);
+    try {
+      const filtered: any[] =
+        (await this._get(`${base}?$select=${select}&$filter=GroupId eq '${encodeURIComponent(groupId)}'&$top=500`))
+          .value || [];
+      if (filtered.length > 0) {
+        return map(filtered).sort((a, b) => a.siteName.localeCompare(b.siteName));
+      }
+      // Nothing matched exactly — re-read and compare case-insensitively before giving up.
+      const all: any[] = (await this._get(`${base}?$select=${select}&$top=5000`)).value || [];
+      const matched: any[] = all.filter((e: any) => this._normalizeGuid(e.GroupId || '') === wanted);
+      if (matched.length > 0) {
+        diag(`${DIAG} site permissions matched only case-insensitively — normalize GroupId casing in the list`, {
+          groupId,
+          matched: matched.length
+        });
+      } else if (all.length > 0) {
+        // The list has rows, but none carry this group's id — usually the wrong value in the
+        // GroupId column (e.g. the Managed Groups item id, or a different group's GUID).
+        diag(`${DIAG} site permissions list has rows but none match this group's GroupId`, {
+          groupId,
+          rowsInList: all.length,
+          sampleGroupIds: all.slice(0, 5).map((e: any) => e.GroupId)
+        });
+      }
+      return map(matched).sort((a, b) => a.siteName.localeCompare(b.siteName));
+    } catch (e) {
+      // Optional feature — the list may not be provisioned, or the user may lack read access.
+      // Log it so an empty "Used On" tab is diagnosable instead of silently blank.
+      diag(`${DIAG} site permissions lookup failed`, {
+        list: this._config.sitePermissionsListTitle,
+        groupId,
+        message: toMessage(e, 'Unknown error')
+      });
+      return [];
     }
+  }
+
+  /** Lower-case a GUID and strip braces/whitespace so list values compare regardless of formatting. */
+  private _normalizeGuid(value: string): string {
+    return (value || '').trim().replace(/^\{|\}$/g, '').toLowerCase();
   }
 
   private _mapRequest(e: any): IMembershipRequest {
