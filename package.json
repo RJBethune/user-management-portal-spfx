@@ -59,7 +59,8 @@
     "@types/jest": "30.0.0",
     "css-loader": "~7.1.2",
     "ajv": "8.18.0",
-    "postcss": "8.5.28"
+    "postcss": "8.5.28",
+    "webpack": "5.105.4"
   },
   "overrides": {
     "@fluentui/keyboard-keys": "9.0.8",
