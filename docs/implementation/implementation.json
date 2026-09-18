@@ -1,0 +1,320 @@
+{
+  "project": {
+    "name": "365 Account Management",
+    "summary": "One web part that lets designated office admins add and remove members of Microsoft 365 groups and classic SharePoint site groups from a SharePoint page. Four SharePoint lists drive it: Managed Groups (the offices), Group Management Authorized Admins (who may manage what), Group Membership Requests (the queue and audit trail), and an optional Group Site Permissions list. Microsoft 365 group changes are performed by one Power Automate flow running as a service account; SharePoint site-group changes are applied directly by the web part as the signed-in user.",
+    "environment": "Production SharePoint (gov tenant — CDN-hosted assets required)",
+    "lastUpdated": "2026-07-09",
+    "owners": ["Executive Office dev team"],
+    "audience": "Anyone — no SharePoint or Power Automate experience is assumed."
+  },
+  "prerequisites": [
+    {
+      "item": "Site owner on the site that will host the four lists",
+      "why": "You will create the Managed Groups, Group Management Authorized Admins, Group Membership Requests, and Group Site Permissions lists by hand",
+      "howToGet": "Site collection administrator"
+    },
+    {
+      "item": "A SharePoint Administrator to approve the web part's Microsoft Graph permissions",
+      "why": "The package requests four DELEGATED, READ-ONLY Graph permissions — GroupMember.Read.All, User.ReadBasic.All, User.Read.All, ProfilePhoto.Read.All — which must be approved on the SharePoint admin center's API access page before member lists, people search, and group photos work. The web part is read-only on Graph by design; all Microsoft 365 group WRITES go through the flow.",
+      "howToGet": "SharePoint admin team — the requests appear under SharePoint admin center → Advanced → API access after the package is deployed"
+    },
+    {
+      "item": "A service account to own the flow and its connections",
+      "why": "The Office 365 Groups connector changes membership as its connection identity, so the account must be an OWNER of every Microsoft 365 group the tool manages. It also needs Edit on Group Membership Requests plus Read on Managed Groups and Group Management Authorized Admins, and it must sign in unattended (exclude it from interactive MFA with a Conditional Access policy scoped to that one account — never tenant-wide).",
+      "howToGet": "IT service-account request — a licensed Entra user account (not a shared mailbox), password vaulted, owned by a team rather than a person"
+    },
+    {
+      "item": "App Catalog administrator + CDN team contact (deployment section)",
+      "why": "Package upload is manual; production assets are CDN-hosted",
+      "howToGet": "SharePoint admin team / workspace deployment standard"
+    }
+  ],
+  "architecture": {
+    "description": "Everything keys off the GroupId column of the Managed Groups list. The web part reads Group Management Authorized Admins to find the signed-in user's grants, loads those Managed Groups rows, and shows one card per office. When an admin adds or removes a member, the web part branches on the GroupId FORMAT. GUID (a Microsoft 365 group): the web part — which holds only read-only Graph permissions — writes a Pending row to Group Membership Requests and polls it; the flow triggers on the new row, re-checks authorization server-side against the Authorized Admins list (matching the row's server-stamped Created By to the exact target group), applies the change through the Office 365 Groups connector as the service account, and writes Status = Completed or Failed plus a result message back onto the row. Integer (a classic SharePoint site group): NO flow at all — the web part calls SharePoint REST directly as the signed-in user (bounded by that user's own permissions on the target site) and logs a pre-completed audit row to the same request list so both paths share one history. The optional Group Site Permissions list feeds a curated “which sites does this group unlock” panel on each card.",
+    "components": [
+      { "name": "365 Account Management web part", "type": "SPFx web part", "purpose": "Office cards with member lists, tenant-wide people search, and Add/Remove — files flow requests for Microsoft 365 groups, applies SharePoint-group changes directly" },
+      { "name": "Managed Groups list", "type": "SharePoint list", "purpose": "One row per office (group) the tool can manage; the GroupId format (GUID vs integer) selects the change path" },
+      { "name": "Group Management Authorized Admins list", "type": "SharePoint list", "purpose": "Grants: which person may manage which Managed Groups row(s); read by the web part for display and re-checked server-side by the flow" },
+      { "name": "Group Membership Requests list", "type": "SharePoint list", "purpose": "Queue and audit trail: the web part files Pending rows, the flow writes the outcome back, the web part polls the row" },
+      { "name": "Group Site Permissions list (optional)", "type": "SharePoint list", "purpose": "Curated “sites this group is used on” rows shown on each office card; the panel hides itself when the list is absent" },
+      { "name": "Process group membership requests flow", "type": "Cloud flow (Power Automate)", "purpose": "Authorizes and applies Microsoft 365 group membership changes as the service account and writes the result back" },
+      { "name": "Service account", "type": "Entra user account", "purpose": "Owns the flow and its two connections; must be an owner of every managed Microsoft 365 group" }
+    ]
+  },
+  "sharePointLists": [
+    {
+      "title": "Managed Groups",
+      "siteHint": "the site the web part's “List site URL” property points at (blank = the site where the page lives)",
+      "purpose": "One row per office (group) the tool manages. The web part shows a card per row the signed-in admin is authorized for; the GroupId format decides how changes are applied (GUID = Microsoft 365 group via the flow, integer = classic SharePoint site group via direct REST).",
+      "columns": [
+        { "displayName": "Title", "internalName": "Title", "type": "Builtin", "required": true, "description": "Built-in Title — the office name shown on the card. If blank the app falls back to SiteTitle, then MailNickname." },
+        { "displayName": "GroupId", "internalName": "GroupId", "type": "Text", "required": true, "description": "THE key column. For a Microsoft 365 group: the Entra group object id GUID (Entra admin center → Groups → the group → Overview → Object Id). For a classic SharePoint site group: the integer group id (Site settings → People and groups — the ID in the page URL). The format alone picks the path: GUID rows go through the flow; integer rows are changed directly by the web part.", "notes": "The flow refuses non-GUID ids, and the app disables the card up front when the value is blank or malformed." },
+        { "displayName": "Description", "internalName": "Description", "type": "Note", "description": "Shown on the office card.", "notes": "Multiple lines of text in PLAIN TEXT mode (the app renders it as-is). Type inferred from display-only use — a single-line Text column also works." },
+        { "displayName": "Mail", "internalName": "Mail", "type": "Text", "description": "The group's email address — display only." },
+        { "displayName": "MailNickname", "internalName": "MailNickname", "type": "Text", "description": "The group's alias; also a card-title fallback." },
+        { "displayName": "Visibility", "internalName": "Visibility", "type": "Text", "description": "Private or Public — display only." },
+        { "displayName": "CreatedDateTime", "internalName": "CreatedDateTime", "type": "DateTime", "description": "When the group was created — display only." },
+        { "displayName": "IsTeamsConnected", "internalName": "IsTeamsConnected", "type": "Boolean", "description": "Yes shows the Teams badge on the card." },
+        { "displayName": "SiteUrl", "internalName": "SiteUrl", "type": "Text", "description": "Absolute URL of the group's SharePoint site. For integer (SharePoint-group) rows this is the site that HOLDS the site group — the app sends its REST calls there and only honors same-tenant URLs.", "notes": "A Hyperlink column also works (the app reads either shape); plain Text keeps hand-entry simple." },
+        { "displayName": "SiteTitle", "internalName": "SiteTitle", "type": "Text", "description": "The site's display name; card-title fallback." },
+        { "displayName": "GroupType", "internalName": "GroupType", "type": "Text", "description": "OPTIONAL flag for group kinds this tool cannot manage. Leave blank for normal groups. Recognized values (case/spacing-insensitive): Dynamic, MailEnabledSecurity, Distribution, RoleAssignable, OnPrem — each disables the card with an explanatory message.", "notes": "Create the column even though the app treats it as optional: when it is missing, the app's first query fails (HTTP 500) and it silently retries without the column on every load. The Office 365 Groups connector genuinely cannot manage those group kinds, so flagging them here prevents doomed requests." }
+      ],
+      "permissions": "Everyone who uses the web part needs Read. Restrict editing to the owning team — this list is trusted, privileged configuration (its SiteUrl values are where SharePoint-group REST calls are sent). The flow's service account needs Read.",
+      "seedData": "One row per office. Fill Title, GroupId, and SiteUrl/SiteTitle at minimum. For every GUID row, also make the service account an OWNER of that Microsoft 365 group — the flow's connector actions fail otherwise.",
+      "notes": "Column names here double as display AND internal names — create each column with exactly this name and do not rename."
+    },
+    {
+      "title": "Group Management Authorized Admins",
+      "siteHint": "same site as Managed Groups",
+      "purpose": "The authorization table — one row grants one person the right to manage one or more Managed Groups rows. The web part shows an admin only the offices granted here, and the flow re-checks this same table server-side before changing anything.",
+      "columns": [
+        { "displayName": "Title", "internalName": "Title", "type": "Builtin", "required": true, "description": "Not read by the app — type the admin's name (or any label) to keep the list readable." },
+        { "displayName": "User", "internalName": "User", "type": "User", "required": true, "indexed": true, "description": "The admin being granted rights. The app finds the signed-in user's grants with a numeric-id filter on this Person column (UserId eq <current user id>)." },
+        { "displayName": "OfficeGroupRecord", "internalName": "OfficeGroupRecord", "type": "Lookup", "required": true, "lookupList": "Managed Groups", "lookupColumn": "Title", "description": "Which Managed Groups row(s) this person may manage. Allow multiple values if you want one row to grant several offices — the app handles single- and multi-value lookups.", "notes": "IMPORTANT: when creating the lookup, ALSO tick GroupId under “Add a column to show each of these additional fields”. The flow's authorization query reads OfficeGroupRecord/GroupId and silently authorizes nobody without that projection. Other projections (e.g. SiteTitle) are optional and only aid readability." }
+      ],
+      "permissions": "Everyone who uses the web part needs Read (the app looks up the signed-in user's own grants). Restrict editing to the owning team — this list IS the permission model. The flow's service account needs Read.",
+      "seedData": "One row per admin: pick the person in User and the office(s) in OfficeGroupRecord. An admin with no row sees an empty web part — that is the intended “not authorized” state.",
+      "notes": "Column names here double as display AND internal names — create each column with exactly this name and do not rename."
+    },
+    {
+      "title": "Group Membership Requests",
+      "siteHint": "same site as Managed Groups",
+      "purpose": "The flow's work queue and the system of record for who asked for what. The web part files a Pending row per Microsoft 365 group change and polls it until the flow writes Completed or Failed back. Direct SharePoint-group changes are logged here too, pre-marked Completed so the flow skips them.",
+      "columns": [
+        { "displayName": "Title", "internalName": "Title", "type": "Builtin", "required": true, "description": "Written by the app as “<Action>: <member name>”, e.g. “Add Member: Jane Smith”." },
+        { "displayName": "Action", "internalName": "Action", "type": "Text", "description": "Exactly “Add Member” or “Remove Member” — the flow's Switch matches these case-sensitively.", "notes": "Single line of text. The app only ever writes those two values; a Choice column is unnecessary and risks a mismatch." },
+        { "displayName": "GroupId", "internalName": "GroupId", "type": "Text", "description": "The target group's id copied from Managed Groups. The flow only processes GUID values; integer (SharePoint-group) rows arrive pre-completed." },
+        { "displayName": "GroupName", "internalName": "GroupName", "type": "Text", "description": "The group's display name — used in result messages." },
+        { "displayName": "MemberId", "internalName": "MemberId", "type": "Text", "description": "Entra object id (GUID) of the target user. Audit only on the connector path; it is what an app-registration variant of the flow would use." },
+        { "displayName": "MemberDisplayName", "internalName": "MemberDisplayName", "type": "Text", "description": "Display name of the target user — used in result messages." },
+        { "displayName": "Status", "internalName": "Status", "type": "Text", "description": "Lifecycle. The app writes Pending (or Completed for direct SharePoint-group changes); the flow ends every row at exactly Completed or Failed.", "notes": "MUST be single line of text, NOT a Choice column — the app posts plain strings. The terminal values are a case-sensitive contract: the web part treats only the exact strings “Completed” and “Failed” as terminal; anything else (Complete, Success, InProgress) makes it poll to its timeout and report a false failure." },
+        { "displayName": "RequestedOn", "internalName": "RequestedOn", "type": "DateTime", "description": "When the admin submitted the request (the app stamps the current date and time)." },
+        { "displayName": "TargetUserPrincipalName", "internalName": "TargetUserPrincipalName", "type": "Text", "description": "UPN of the user being added or removed — the value the flow feeds to the Office 365 Groups connector." },
+        { "displayName": "TargetUserEmail", "internalName": "TargetUserEmail", "type": "Text", "description": "The target user's email address (audit/messages)." },
+        { "displayName": "CorrelationId", "internalName": "CorrelationId", "type": "Text", "description": "A GUID the app generates per request — traces a click in the web part to a flow run." },
+        { "displayName": "OfficeGroupRecord", "internalName": "OfficeGroupRecord", "type": "Lookup", "lookupList": "Managed Groups", "lookupColumn": "Title", "description": "The Managed Groups row the request came from (the app sets it via OfficeGroupRecordId).", "notes": "Client-supplied convenience — the flow deliberately authorizes on GroupId plus the server-stamped Created By, never on this lookup." },
+        { "displayName": "Justification", "internalName": "Justification", "type": "Note", "description": "The reason the admin typed. Written only when provided; the web part property “Require a reason for each change” makes it mandatory in the UI.", "notes": "Multiple lines of text, PLAIN TEXT mode. Do not skip this column: when a reason is required, the app deliberately fails the submit rather than silently dropping the reason if the column is missing." },
+        { "displayName": "MemberEntraId", "internalName": "MemberEntraId", "type": "User", "description": "Person column for the target user — the app resolves the UPN via ensureuser and sets MemberEntraIdId. Best-effort: left empty when the account cannot be resolved." },
+        { "displayName": "RequestedBy", "internalName": "RequestedBy", "type": "User", "description": "Person column for the requesting admin.", "notes": "Optional metadata: if this column is missing the app retries the write without it. The authoritative requester identity is always the built-in Created By." },
+        { "displayName": "ResultMessage", "internalName": "ResultMessage", "type": "Note", "description": "The human sentence shown to the user. Written by the FLOW on the connector path; on the direct path the app writes “Applied directly to the SharePoint group.”", "notes": "Plain text mode." },
+        { "displayName": "AuthorizationChecked", "internalName": "AuthorizationChecked", "type": "Boolean", "description": "Written by the FLOW: Yes once the server-side authorization re-check has run." },
+        { "displayName": "AuthorizationResult", "internalName": "AuthorizationResult", "type": "Note", "description": "Written by the FLOW: the re-check outcome, e.g. “Authorized for <group>.” or “Not authorized to manage this group.”", "notes": "Plain text mode." }
+      ],
+      "permissions": "Requesting admins need Add items plus Read — the app lists “my recent requests” filtered to rows they created, so item-level “Read items that were created by the user” hardening is compatible. The flow's service account needs Edit. Ideally only the service account edits rows after creation: Status and the Authorization columns are its write-back.",
+      "notes": "Who writes what — the APP writes Title, Action, GroupId, GroupName, MemberId, MemberDisplayName, Status (Pending, or Completed on the direct path), RequestedOn, TargetUserPrincipalName, TargetUserEmail, CorrelationId, OfficeGroupRecord, Justification, MemberEntraId, and RequestedBy at submit. The FLOW writes back exactly four: Status (Completed/Failed), ResultMessage, AuthorizationChecked, AuthorizationResult. Column names double as display AND internal names — create each column with exactly this name."
+    },
+    {
+      "title": "Group Site Permissions",
+      "siteHint": "same site as Managed Groups",
+      "purpose": "OPTIONAL. A curated, hand-maintained map of which SharePoint sites each group grants access to (and at what level), shown as a panel on the office card. The web part hides the panel when the list is missing or unreadable — nothing else depends on it.",
+      "columns": [
+        { "displayName": "Title", "internalName": "Title", "type": "Builtin", "required": true, "description": "Not read by the app — type any label (e.g. “<group> on <site>”)." },
+        { "displayName": "SiteName", "internalName": "SiteName", "type": "Text", "description": "Friendly site name shown in the panel." },
+        { "displayName": "SiteUrl", "internalName": "SiteUrl", "type": "URL", "description": "Hyperlink column pointing at the site. The app reads the link's URL, and uses the link's description as a fallback name when SiteName is blank.", "notes": "Create as “Hyperlink or Picture” → Hyperlink. (The app also tolerates a plain Text column, but Hyperlink is the intended type.)" },
+        { "displayName": "Permission", "internalName": "Permission", "type": "Text", "description": "The permission level shown, e.g. Read, Contribute, Full Control — free text." },
+        { "displayName": "GroupId", "internalName": "GroupId", "type": "Text", "indexed": true, "description": "Matches the group's GroupId in Managed Groups — the app filters this list on it for each card." }
+      ],
+      "permissions": "Web part users need Read; restrict editing to the owning team (it is trusted display data).",
+      "seedData": "One row per (group, site) pair you want shown. Rows are display-only — they grant nothing; they document grants made elsewhere.",
+      "notes": "Skip this list entirely if you do not want the panel — the web part degrades gracefully. Column names double as display AND internal names."
+    }
+  ],
+  "flows": [
+    {
+      "name": "Process group membership requests",
+      "purpose": "Watches the Group Membership Requests list. For each new Pending row targeting a Microsoft 365 (GUID) group it re-checks that the requester is authorized for that exact group, applies the add/remove through the Office 365 Groups connector as the service account (idempotently), and writes Completed or Failed plus a human message back onto the row the web part is polling. SharePoint-group changes never reach this flow.",
+      "type": "Automated cloud flow",
+      "owner": "Service account (licensed Entra user; OWNER of every managed Microsoft 365 group; Edit on Group Membership Requests, Read on Managed Groups and Group Management Authorized Admins)",
+      "connections": [
+        { "connector": "SharePoint", "account": "The flow owner (service account)", "notes": "Used by the trigger, the authorization re-check, and the write-back." },
+        { "connector": "Office 365 Groups", "account": "The flow owner (service account)", "notes": "Standard (non-premium) connector. Membership actions succeed because the connection identity is an OWNER of the target group. It cannot manage mail-enabled security groups, distribution lists, or role-assignable groups — flag those rows with GroupType in Managed Groups instead." }
+      ],
+      "trigger": {
+        "kind": "When an item is created (SharePoint)",
+        "configuration": {
+          "Site Address": "the site that hosts Group Membership Requests",
+          "List Name": "Group Membership Requests"
+        },
+        "notes": "Use the plain “created” trigger, NOT “created or modified” — the flow updates the same row and must not re-trigger itself. Trigger settings (… → Settings): Concurrency Control On, Degree of Parallelism 1. If a page's “Request list title” property points at a different list, that list needs its own copy of this flow triggering on it."
+      },
+      "steps": [
+        {
+          "title": "Initialize the four result variables",
+          "action": "Variable → Initialize variable (four times)",
+          "configuration": {
+            "varTerminalStatus": "Type String, no initial value",
+            "varResultMessage": "Type String, no initial value",
+            "varAuthorizationResult": "Type String, no initial value",
+            "varAuthorizationChecked": "Type Boolean, initial value false"
+          },
+          "notes": "The rest of the flow only fills these variables; a single Update item at the end (step 11) writes them to the row — every path funnels through that one write-back."
+        },
+        {
+          "title": "Ignore rows that are not Pending",
+          "action": "Control → Condition",
+          "configuration": {
+            "Condition": "Status (dynamic content) is equal to Pending",
+            "If no": "Control → Terminate, status Succeeded — the row is not work for this flow (e.g. the app's pre-completed SharePoint-group audit rows). Write nothing."
+          },
+          "notes": "Everything from step 3 on goes inside the “If yes” branch. This is the only mid-flow Terminate."
+        },
+        {
+          "title": "Refuse SharePoint-group ids (insurance guard)",
+          "action": "Control → Condition",
+          "configuration": {
+            "Condition": "GroupId (dynamic content) contains -",
+            "If no": "Set variable varTerminalStatus = Failed, then Set variable varResultMessage = “SharePoint groups are handled by the widget, not this flow.” Do NOT call the connector; execution falls through to step 11."
+          },
+          "notes": "Entra group GUIDs always contain hyphens; classic SharePoint site-group ids are pure integers and are changed directly by the web part, never by this flow."
+        },
+        {
+          "title": "Open a Try scope",
+          "action": "Control → Scope (rename it Try)",
+          "notes": "Steps 5–9 all go INSIDE this scope so any unexpected error lands in the Catch scope (step 10) instead of stranding the row at Pending."
+        },
+        {
+          "title": "Re-check authorization server-side",
+          "action": "SharePoint → Send an HTTP request to SharePoint (rename it HTTP_GetGrant)",
+          "configuration": {
+            "Site Address": "the site that hosts the lists",
+            "Method": "GET",
+            "Uri": "_api/web/lists/getbytitle('Group Management Authorized Admins')/items?$select=Id,UserId,OfficeGroupRecord/Id,OfficeGroupRecord/GroupId&$expand=OfficeGroupRecord&$filter=UserId eq @{triggerOutputs()?['body/Author/Id']} and OfficeGroupRecord/GroupId eq '@{triggerBody()?['GroupId']}'",
+            "Headers": "Accept: application/json;odata=nometadata"
+          },
+          "notes": "This authorizes the row's server-stamped Created By (never a client-supplied field) against the EXACT group the request targets — a forged OfficeGroupRecord lookup cannot help. A plain Get items action cannot traverse the lookup, hence the REST call. It only returns rows when the Authorized Admins lookup projects GroupId (see that list's column notes)."
+        },
+        {
+          "title": "Record that the check ran, then decide",
+          "action": "Variable → Set variable, then Control → Condition",
+          "configuration": {
+            "Set variable": "varAuthorizationChecked = true",
+            "Condition (expression)": "length(body('HTTP_GetGrant')?['value']) is greater than 0",
+            "If no (not authorized)": "varTerminalStatus = Failed; varAuthorizationResult = “Not authorized to manage this group.”; varResultMessage = “You are not authorized to manage membership for @{triggerBody()?['GroupName']}.” Do NOT call the connector; fall through to step 11.",
+            "If yes": "varAuthorizationResult = “Authorized for @{triggerBody()?['GroupName']}.” — continue to step 7."
+          },
+          "notes": "Fail-closed: if HTTP_GetGrant itself errors (throttling, list renamed), the Try scope fails into Catch and the row is marked Failed with no change made — the intended safe default."
+        },
+        {
+          "title": "Switch on the requested action",
+          "action": "Control → Switch",
+          "configuration": {
+            "On": "Action (dynamic content)",
+            "Case “Add Member”": "step 8",
+            "Case “Remove Member”": "step 9",
+            "Default": "varTerminalStatus = Failed; varResultMessage = “Unknown action: @{triggerOutputs()?['body/Action']}.”"
+          },
+          "notes": "The case labels are case-sensitive and must read exactly Add Member and Remove Member."
+        },
+        {
+          "title": "Case Add Member — idempotent add",
+          "action": "Office 365 Groups → List group members, then Control → Condition, then Office 365 Groups → Add member to group",
+          "configuration": {
+            "List group members": "Group Id = GroupId (dynamic content)",
+            "Condition “already a member?”": "length of the member list filtered where userPrincipalName equals TargetUserPrincipalName (compare lower-cased) is greater than 0",
+            "If yes (already a member)": "varTerminalStatus = Completed; varResultMessage = “@{triggerBody()?['MemberDisplayName']} is already a member of @{triggerBody()?['GroupName']}.”",
+            "If no — Add member to group": "Group Id = GroupId; User Principal Name = TargetUserPrincipalName",
+            "After the add (run after: is successful)": "varTerminalStatus = Completed; varResultMessage = “… was added to @{triggerBody()?['GroupName']}.”",
+            "Parallel branch (run after: has failed / has timed out)": "varTerminalStatus = Failed; varResultMessage = “Could not add …: ” + coalesce(body('Add_member_to_group')?['error']?['message'], 'the request failed or timed out')"
+          },
+          "notes": "Idempotency comes from the member list — never decide a no-op by parsing a localized error string. Any real failure stays Failed with the real message; never mask an error as success."
+        },
+        {
+          "title": "Case Remove Member — idempotent remove",
+          "action": "Office 365 Groups → List group members, then Control → Condition, then Office 365 Groups → Remove member from group",
+          "configuration": {
+            "List group members": "Group Id = GroupId (dynamic content)",
+            "Condition “is a member?”": "same length(filter(...)) test as step 8",
+            "If no (not a member)": "varTerminalStatus = Completed; varResultMessage = “@{triggerBody()?['MemberDisplayName']} was not a member of @{triggerBody()?['GroupName']}.”",
+            "If yes — Remove member from group": "Group Id = GroupId; User Principal Name = TargetUserPrincipalName",
+            "After the remove (run after: is successful)": "varTerminalStatus = Completed; varResultMessage = “… was removed from @{triggerBody()?['GroupName']}.”",
+            "Parallel branch (run after: has failed / has timed out)": "varTerminalStatus = Failed; varResultMessage = “Could not remove …: ” + the connector's error message (same coalesce pattern as step 8)"
+          }
+        },
+        {
+          "title": "Catch scope — any unexpected error",
+          "action": "Control → Scope (rename it Catch)",
+          "configuration": {
+            "Configure run after": "has failed, has timed out (of the Try scope)",
+            "Inside": "Set variable varTerminalStatus = Failed; Set variable varResultMessage = “The request could not be completed due to an unexpected error.”"
+          },
+          "notes": "Optional: surface the real error with first(filter(result('Try'), …status Failed…))?['outputs']?['body']?['error']?['message'] — do not use result('Try')[0], which is the first action, not the failed one."
+        },
+        {
+          "title": "Write the result back — exactly once",
+          "action": "SharePoint → Update item",
+          "configuration": {
+            "Site Address / List Name": "the request list (same as the trigger)",
+            "Id": "ID (dynamic content from the trigger)",
+            "Status": "@{variables('varTerminalStatus')}",
+            "ResultMessage": "@{variables('varResultMessage')}",
+            "AuthorizationChecked": "@{variables('varAuthorizationChecked')}",
+            "AuthorizationResult": "@{variables('varAuthorizationResult')}",
+            "Every other field": "leave blank so Update item does not clear it"
+          },
+          "notes": "Place this AFTER the Try and Catch scopes and set its Configure run after to is successful + has failed + is skipped so every path reaches it. Status must resolve to exactly Completed or Failed — never an interim value (InProgress, Complete, Success): the web part polls this row and only those two exact strings stop the poll. If the update returns 400, check the trigger's item-id token (ID) first — a failed write here strands the row at Pending."
+        },
+        {
+          "title": "End the run",
+          "action": "Control → Terminate (status Succeeded)",
+          "notes": "The run succeeded at recording a business outcome — even when that outcome is Failed."
+        }
+      ],
+      "errorHandling": "Steps 5–9 live inside a Try scope; a Catch scope (Configure run after: Try has failed / has timed out) marks the row Failed with a generic message. The single Update item after both scopes runs on is successful / has failed / is skipped, so every branch — unauthorized, unknown action, guard, success, caught error — writes back. Invariant to verify before go-live: NO path may leave a row at Status = Pending; a stranded Pending row makes the web part poll to its timeout and report a false failure.",
+      "settings": "Trigger → Settings → Concurrency Control: On, Degree of Parallelism: 1 — serializes runs so the already-a-member check is reliable and avoids connector throttling. Keep end-to-end runtime well under the web part's “Status wait timeout” property (default 120 s; the created-trigger itself can add ~5–30 s of latency) — measure in UAT and raise the property if needed.",
+      "testing": [
+        "Happy add: in the web part, add a member to a Microsoft 365 (GUID) group → the flow run succeeds; the request row flips Pending → Completed with “… was added …”; the web part shows success within seconds and the member appears in the list.",
+        "Idempotent add: submit the same add again → Completed with “… is already a member …” (decided from the member list, not from a connector error).",
+        "Happy remove, then idempotent remove of a non-member → Completed with “… was removed …” / “… was not a member …”.",
+        "Unauthorized: hand-create a Pending row as (or forge one for) an admin with no grant for that group → Failed, AuthorizationResult “Not authorized to manage this group.”, and the run history shows NO connector action ran.",
+        "SharePoint-group guard: hand-create a Pending row whose GroupId is an integer → Failed with “SharePoint groups are handled by the widget, not this flow.”, no connector call.",
+        "Unknown action: hand-create a Pending row with Action = Foo → Failed, “Unknown action: Foo”.",
+        "Contract regression (critical): temporarily make the write-back write Status = “Complete” (no d) on a happy add → the web part polls to its timeout and then shows an error, proving the case-sensitive Completed/Failed contract. Revert immediately."
+      ],
+      "notes": "Ownership drift is this model's number-one failure mode: if the service account is not an owner of a newly added group (or is removed from one), adds and removes for that group start failing — put “add the service account as owner” in the office-onboarding checklist and audit monthly. Entra's audit log attributes changes to the service account; the request list (Created By + CorrelationId) is the system of record for who asked. Watch for rows stuck at Pending (the trigger did not fire, or the flow died before write-back). If the tool later outgrows group-by-group ownership, swap the two connector actions for HTTP calls under an app registration with application permission GroupMember.ReadWrite.All — the trigger, authorization re-check, and write-back stay identical."
+    }
+  ],
+  "deployment": { "mode": "cdn" },
+  "configuration": [
+    {
+      "area": "Approve the web part's Microsoft Graph permissions (once per tenant)",
+      "steps": [
+        "After the package is deployed (section 7), open the SharePoint admin center → Advanced → API access.",
+        "Under Pending requests, approve the four Microsoft Graph delegated permissions the package requests: GroupMember.Read.All, User.ReadBasic.All, User.Read.All, and ProfilePhoto.Read.All.",
+        "All four are read-only: they let the web part list group members and owners, search the directory, and show group photos. Membership WRITES are performed by the flow, not the web part."
+      ],
+      "notes": "Until these are approved, office cards load but member lists and people search fail with a Graph permissions error."
+    },
+    {
+      "area": "Add and wire the web part",
+      "steps": [
+        "Edit the target page, add the “365 Account Management” web part (section 8), and open its property pane.",
+        "Data source: the four list-title properties already default to Managed Groups, Group Management Authorized Admins, Group Membership Requests, and Group Site Permissions — change them only if you named the lists differently. Set “List site URL” to the site that hosts the lists when the page lives elsewhere in the tenant (blank = the current site).",
+        "Offices on this page: leave “Offices to show” blank to show every office the viewer is authorized for, or enter a comma-separated subset of office names / Group IDs (authorization is still enforced either way — listing an unauthorized office has no effect).",
+        "Behavior: set “Status wait timeout” (default 120 s) comfortably above the flow's observed end-to-end time; turn on “Require a reason for each change” if submissions must carry a justification; leave “Show Microsoft 365 group photos” on unless photos are unwanted.",
+        "Republish the page."
+      ],
+      "notes": "Pointing different pages at different request lists routes them to different flows — each such list needs its own copy of the flow triggering on it."
+    }
+  ],
+  "verification": [
+    { "check": "Open the page as an admin who has Group Management Authorized Admins rows", "expected": "One card per granted office; offices without a grant do not appear" },
+    { "check": "Open the page as a user with NO Authorized Admins row", "expected": "The web part shows its empty “no offices” state — no cards, no errors" },
+    { "check": "Search for a person in a card's add-member box", "expected": "Directory results appear (proves the Graph permissions were approved)" },
+    { "check": "Add a member to a Microsoft 365 (GUID) group", "expected": "Success message within seconds; the request row ends at Status = Completed with AuthorizationChecked = Yes; the member appears in the card and in the group" },
+    { "check": "Add or remove a member on a classic SharePoint (integer) group", "expected": "The change applies immediately with NO flow run; an audit row appears in Group Membership Requests already marked Completed (“Applied directly to the SharePoint group.”)" },
+    { "check": "Open a card for a group that has Group Site Permissions rows", "expected": "The sites panel lists them; groups without rows (or with the list absent) simply show no panel" }
+  ],
+  "rollback": [
+    "Turn the flow Off in Power Automate to stop all Microsoft 365 group changes instantly. Caution: rows created while it is off are NOT picked up when it is turned back on (a created-trigger does not fire retroactively) — the web part reports a timeout for them; resubmit those requests or close them by hand (Status = Failed plus a note in ResultMessage).",
+    "Remove the web part from its page(s) to stop new requests; the four lists keep the full audit history and can be left in place."
+  ],
+  "glossary": [
+    { "term": "Microsoft 365 group", "definition": "An Entra ID (Azure AD) group with a GUID object id — the kind behind Teams and modern SharePoint team sites. In this solution, changed only by the flow." },
+    { "term": "SharePoint site group", "definition": "A classic permission group that lives inside one SharePoint site, identified by a small integer id. Changed directly by the web part as the signed-in user — the flow never touches these." },
+    { "term": "Delegated permission / admin consent", "definition": "SPFx web parts call Microsoft Graph as the signed-in user, but a SharePoint admin must approve each requested permission once (SharePoint admin center → Advanced → API access) before the calls succeed." },
+    { "term": "Service account", "definition": "A licensed, non-personal user account that owns the flow and its connections so the automation does not break when a person leaves. Here it must also be an owner of every managed Microsoft 365 group." },
+    { "term": "UPN (User Principal Name)", "definition": "A user's sign-in name, e.g. jane@agency.gov — what the flow hands the connector to identify who to add or remove." },
+    { "term": "Idempotent", "definition": "Safe to run twice: adding someone who is already a member (or removing a non-member) ends as Completed with an explanatory message instead of an error." },
+    { "term": "Queue list", "definition": "A list used as a to-do line for a flow: the app adds a row, the flow processes it and stamps the result on the same row, and the app polls that row to show the outcome." }
+  ]
+}
