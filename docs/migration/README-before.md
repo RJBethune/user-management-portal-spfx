@@ -1,15 +1,4 @@
-# Account Management
-
-Version 1.11.3. Independent app repository in the SPFx Applications portfolio.
-
-Run npm ci, npm run check, then npm run package:dev or npm run package:prod. Find the finished package in releases/dev/latest/ or releases/prod/latest/. Source must be committed before packaging.
-
-[Architecture](ARCHITECTURE.md) · [Delivery](docs/DELIVERY.md) · [Baseline upgrades](docs/BASELINE.md) · [Known issues](docs/KNOWN-ISSUES.md) · [Migration](docs/MIGRATION.md).
-
-## Product and setup reference
-
-The following setup documentation is retained from upstream. Use the delivery and baseline guides above for current build commands and versions.
-
+# 365 Account Management (user-management-portal-spfx)
 
 SharePoint Framework (SPFx) web part that lets designated office admins **add and remove members of
 Microsoft 365 groups and SharePoint site groups** from a SharePoint page — with a live Entra profile

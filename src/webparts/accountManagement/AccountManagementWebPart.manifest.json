@@ -6,14 +6,23 @@
   "version": "*",
   "manifestVersion": 2,
   "requiresCustomScript": false,
-  "supportedHosts": ["SharePointWebPart", "SharePointFullPage"],
+  "supportedHosts": [
+    "SharePointWebPart",
+    "SharePointFullPage"
+  ],
   "supportsThemeVariants": true,
   "preconfiguredEntries": [
     {
       "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
-      "group": { "default": "Advanced" },
-      "title": { "default": "365 Account Management" },
-      "description": { "default": "Manage Microsoft 365 account and group membership requests" },
+      "group": {
+        "default": "Advanced"
+      },
+      "title": {
+        "default": "Account Management"
+      },
+      "description": {
+        "default": "Manage Microsoft 365 account and group membership requests"
+      },
       "officeFabricIconFontName": "Group",
       "properties": {
         "description": "365 Account Management",

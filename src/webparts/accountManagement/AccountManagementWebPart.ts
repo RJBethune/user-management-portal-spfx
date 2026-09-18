@@ -1,3 +1,4 @@
+import { buildInfo } from '../../delivery/buildInfo';
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import { Version, DisplayMode } from '@microsoft/sp-core-library';
@@ -71,7 +72,7 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
 }
 
 export default class AccountManagementWebPart extends BaseClientSideWebPart<IAccountManagementWebPartProps> {
-  public static readonly buildVersion: string = '1.11.2';
+  public static readonly buildVersion: string = buildInfo.version;
 
   private _theme: IReadonlyTheme | undefined;
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
@@ -239,7 +240,8 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
                   offText: 'Off'
                 })
               ]
-            }
+            },
+            { groupName: 'About', groupFields: [PropertyPaneLabel('deliveryAttribution', { text: `Account Management ${buildInfo.version} · ${buildInfo.channel.toUpperCase()} — M/EX - Executive Office` })] }
           ]
         }
       ]

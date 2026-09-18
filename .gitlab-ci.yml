@@ -1,0 +1,36 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH =~ /^(migration|baseline)\//'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+stages:
+  - validate
+
+validate-spfx:
+  stage: validate
+  image: node:22.14.0-bookworm
+  # Set runner tags here if required by your GitLab instance.
+  timeout: 30m
+  interruptible: true
+  parallel:
+    matrix:
+      - CHANNEL: [dev, prod]
+  variables:
+    EO_SPFX_MINIFIER_THREADS: '1'
+    npm_config_cache: '$CI_PROJECT_DIR/.npm'
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  script:
+    - npm ci
+    - npm run package:$CHANNEL
+  artifacts:
+    name: 'account-management-spfx-$CHANNEL-$CI_COMMIT_SHORT_SHA'
+    paths:
+      - releases/
+    expire_in: 90 days

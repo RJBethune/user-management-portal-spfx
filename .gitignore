@@ -28,3 +28,11 @@ src/**/*.module.scss.ts
 
 # Claude tooling / working docs (contain tenant-specific identifiers)
 .claude/
+
+# Portfolio delivery and local-only state
+/releases/
+/scratch/
+/.local/
+/.npm/
+/lib-commonjs/
+/jest-output/

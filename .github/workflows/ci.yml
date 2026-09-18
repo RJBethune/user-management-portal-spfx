@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, "migration/**", "baseline/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [dev, prod]
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Validate and package selected channel
+        run: npm run package:${{ matrix.channel }}
+
+      - name: Retain deployment packages
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: account-management-spfx-${{ matrix.channel }}-${{ github.sha }}
+          path: releases/${{ matrix.channel }}/
+          if-no-files-found: error
+          retention-days: 90
+# Preserve approved production builds in durable storage before artifact expiry.

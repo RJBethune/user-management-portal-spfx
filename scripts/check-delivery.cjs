@@ -1,0 +1,11 @@
+'use strict';
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const { loadConfig } = require('@eo/spfx-baseline/scripts/delivery.cjs');
+const config = loadConfig(root);
+const archive = path.join(root, config.pkg.devDependencies['@eo/spfx-baseline'].slice(5));
+const expected = fs.readFileSync(archive + '.sha256', 'utf8').trim().split(/\s/)[0];
+if (crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex') !== expected) throw Error('Baseline archive changed');
+console.log('Baseline archive, identities and app/solution version mapping verified.');

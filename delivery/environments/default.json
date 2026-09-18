@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "description": "Portable package. Origins are verification defaults, not tenant restrictions. CDN path retained across folder/product rename.",
+  "channels": {
+    "dev": {
+      "assetMode": "embedded",
+      "cdnRoot": "https://irm.azureedge.us/M/user-management-portal-spfx/",
+      "verificationOrigins": [
+        "https://usdos.sharepoint.com",
+        "https://usdossiolab.sharepoint.com"
+      ]
+    },
+    "prod": {
+      "assetMode": "cdn",
+      "cdnRoot": "https://irm.azureedge.us/M/user-management-portal-spfx/",
+      "verificationOrigins": [
+        "https://usdos.sharepoint.com"
+      ]
+    }
+  }
+}

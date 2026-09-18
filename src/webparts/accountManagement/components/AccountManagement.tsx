@@ -583,6 +583,50 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     owners: IUser[];
   }
 
+  const writePrintDocument = (win: Window, sections: IPrintSection[]): void => {
+    const escapes: { [k: string]: string } = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+    const esc = (s: string | undefined): string => (s || '').replace(/[&<>"]/g, (c: string) => escapes[c]);
+    const who: string = props.userDisplayName || props.context.pageContext.user.displayName || '';
+    const stamp: string = new Date().toLocaleString();
+    const body: string = sections
+      .map((sec: IPrintSection) => {
+        const rows: string =
+          sec.members
+            .map(
+              (m: IUser) =>
+                `<tr><td>${esc(m.displayName)}</td><td>${esc(m.mail || m.userPrincipalName)}</td><td>${esc(m.jobTitle) || '&mdash;'}</td></tr>`
+            )
+            .join('') || '<tr><td colspan="3">No members.</td></tr>';
+        const owners: string = sec.owners.length
+          ? `<p class="owners"><strong>Owners:</strong> ${sec.owners.map((o: IUser) => esc(o.displayName)).join(', ')}</p>`
+          : '';
+        return (
+          `<section><h2>${esc(sec.group.title)}</h2>` +
+          `<p class="meta">${esc(sec.group.mail || sec.group.siteTitle || groupKindLabel(sec.group.groupId))} &middot; ` +
+          `${sec.members.length} member${sec.members.length === 1 ? '' : 's'}</p>${owners}` +
+          `<table><thead><tr><th>Name</th><th>Email</th><th>Title</th></tr></thead><tbody>${rows}</tbody></table></section>`
+        );
+      })
+      .join('');
+    const html: string =
+      '<!doctype html><html><head><meta charset="utf-8"><title>365 Account Management — Membership</title><style>' +
+      'body{font-family:Segoe UI,Arial,sans-serif;color:#222;margin:24px;}' +
+      'h1{font-size:20px;margin:0 0 4px;}h2{font-size:16px;margin:18px 0 4px;}' +
+      'header{border-bottom:2px solid #ddd;padding-bottom:8px;margin-bottom:8px;}' +
+      '.sub{color:#666;font-size:12px;margin:0;}.meta{color:#666;font-size:12px;margin:0 0 6px;}' +
+      '.owners{font-size:12px;margin:0 0 6px;}' +
+      'table{border-collapse:collapse;width:100%;font-size:12px;}' +
+      'th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;}th{background:#f3f3f3;}' +
+      'section{page-break-inside:avoid;}@media print{body{margin:0;}}' +
+      '</style></head><body>' +
+      `<header><h1>Group Membership</h1><p class="sub">Printed by ${esc(who)} on ${esc(stamp)}</p></header>` +
+      (body || '<p>No groups to print.</p>') +
+      '<script>window.onload=function(){window.print();}</script></body></html>';
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  };
+
   // Print View: gather members (and O365 owners) for every manageable group, then open a clean,
   // self-contained print document in a new window (the web part can't restyle the whole SP page).
   const printAll = async (): Promise<void> => {
@@ -632,50 +676,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     } finally {
       setPrinting(false);
     }
-  };
-
-  const writePrintDocument = (win: Window, sections: IPrintSection[]): void => {
-    const escapes: { [k: string]: string } = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
-    const esc = (s: string | undefined): string => (s || '').replace(/[&<>"]/g, (c: string) => escapes[c]);
-    const who: string = props.userDisplayName || props.context.pageContext.user.displayName || '';
-    const stamp: string = new Date().toLocaleString();
-    const body: string = sections
-      .map((sec: IPrintSection) => {
-        const rows: string =
-          sec.members
-            .map(
-              (m: IUser) =>
-                `<tr><td>${esc(m.displayName)}</td><td>${esc(m.mail || m.userPrincipalName)}</td><td>${esc(m.jobTitle) || '&mdash;'}</td></tr>`
-            )
-            .join('') || '<tr><td colspan="3">No members.</td></tr>';
-        const owners: string = sec.owners.length
-          ? `<p class="owners"><strong>Owners:</strong> ${sec.owners.map((o: IUser) => esc(o.displayName)).join(', ')}</p>`
-          : '';
-        return (
-          `<section><h2>${esc(sec.group.title)}</h2>` +
-          `<p class="meta">${esc(sec.group.mail || sec.group.siteTitle || groupKindLabel(sec.group.groupId))} &middot; ` +
-          `${sec.members.length} member${sec.members.length === 1 ? '' : 's'}</p>${owners}` +
-          `<table><thead><tr><th>Name</th><th>Email</th><th>Title</th></tr></thead><tbody>${rows}</tbody></table></section>`
-        );
-      })
-      .join('');
-    const html: string =
-      '<!doctype html><html><head><meta charset="utf-8"><title>365 Account Management — Membership</title><style>' +
-      'body{font-family:Segoe UI,Arial,sans-serif;color:#222;margin:24px;}' +
-      'h1{font-size:20px;margin:0 0 4px;}h2{font-size:16px;margin:18px 0 4px;}' +
-      'header{border-bottom:2px solid #ddd;padding-bottom:8px;margin-bottom:8px;}' +
-      '.sub{color:#666;font-size:12px;margin:0;}.meta{color:#666;font-size:12px;margin:0 0 6px;}' +
-      '.owners{font-size:12px;margin:0 0 6px;}' +
-      'table{border-collapse:collapse;width:100%;font-size:12px;}' +
-      'th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;}th{background:#f3f3f3;}' +
-      'section{page-break-inside:avoid;}@media print{body{margin:0;}}' +
-      '</style></head><body>' +
-      `<header><h1>Group Membership</h1><p class="sub">Printed by ${esc(who)} on ${esc(stamp)}</p></header>` +
-      (body || '<p>No groups to print.</p>') +
-      '<script>window.onload=function(){window.print();}</script></body></html>';
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
   };
 
   // LivePersona (hover profile card) was removed to drop the @pnp/spfx-controls-react dependency;

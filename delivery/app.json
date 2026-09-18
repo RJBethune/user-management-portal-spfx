@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "appKey": "user-management-portal-spfx",
+  "displayName": "Account Management",
+  "projectRoot": ".",
+  "componentManifest": "src/webparts/accountManagement/AccountManagementWebPart.manifest.json",
+  "defaultProfile": "default",
+  "validationScripts": [
+    "check"
+  ],
+  "baselineProfile": "eo-spfx-heft-1.23.2",
+  "uiProfile": "fluent9-react17-tabster-pinned",
+  "knownIssueIds": [
+    "CDN-02",
+    "CDN-11",
+    "ACCOUNT-01",
+    "UI-ACCEPTANCE"
+  ],
+  "attribution": "M/EX - Executive Office",
+  "requirePickerTitle": true
+}

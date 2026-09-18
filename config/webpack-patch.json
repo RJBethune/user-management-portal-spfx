@@ -1,0 +1,3 @@
+{
+  "patchFiles": [".ci/webpack-resource-limits.cjs", ".ci/webpack-cdn-compat.cjs"]
+}

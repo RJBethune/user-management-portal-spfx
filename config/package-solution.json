@@ -1,10 +1,10 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
   "solution": {
-    "name": "365 Account Management",
+    "name": "Account Management",
     "id": "ee656af9-b263-4758-b163-a56663bc6cbd",
-    "version": "1.11.2.0",
-    "includeClientSideAssets": true,
+    "version": "1.11.3.0",
+    "includeClientSideAssets": false,
     "skipFeatureDeployment": false,
     "isDomainIsolated": false,
     "developer": {
@@ -48,11 +48,11 @@
         "title": "365 Account Management Feature",
         "description": "Activates the 365 Account Management web part.",
         "id": "0ce47f4e-35ca-4b99-afb7-ce1b2703ccaf",
-        "version": "1.11.2.0"
+        "version": "1.11.3.0"
       }
     ]
   },
   "paths": {
-    "zippedPackage": "solution/365-account-management.sppkg"
+    "zippedPackage": "solution/account-management.sppkg"
   }
 }

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "dev": {
+    "solutionId": "cc3432be-8ecc-4be6-a9ee-1652f687c9d7",
+    "featureId": "21ecc7d5-b080-4730-86bf-ced482879e12",
+    "componentId": "def2a872-bf6d-4766-bf9a-ffb05bd35fe6"
+  },
+  "prod": {
+    "solutionId": "ee656af9-b263-4758-b163-a56663bc6cbd",
+    "featureId": "0ce47f4e-35ca-4b99-afb7-ce1b2703ccaf",
+    "componentId": "762df7fa-0fd0-4019-b227-d184ab4abc67"
+  }
+}

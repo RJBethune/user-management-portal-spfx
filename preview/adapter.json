@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "kind": "spfx-webpart",
+  "entry": "src/webparts/accountManagement/AccountManagementWebPart.ts",
+  "manifest": "src/webparts/accountManagement/AccountManagementWebPart.manifest.json",
+  "stringsModule": "AccountManagementWebPartStrings",
+  "strings": "src/webparts/accountManagement/loc/en-us.js",
+  "fixtureModule": "preview/fixtures.ts",
+  "fixtures": ["populated", "empty", "loading", "error"]
+}
