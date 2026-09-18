@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "appKey": "user-management-portal-spfx",
+  "appKey": "account-management-spfx",
   "displayName": "Account Management",
   "projectRoot": ".",
   "componentManifest": "src/webparts/accountManagement/AccountManagementWebPart.manifest.json",
