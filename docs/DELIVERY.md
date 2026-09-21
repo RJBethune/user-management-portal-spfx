@@ -9,3 +9,12 @@ PROD retains all existing IDs and CDN https://irm.azureedge.us/M/user-management
 Upload assets only when authorized, then run npm run verify:cdn -- --build releases/prod/1.11.3/BUILD-ID --origin https://destination.sharepoint.com against the exact uploaded bytes before catalog installation. Validate cold/warm loading, permissions, settings and dialogs on an authenticated SharePoint DEV page. Retain old assets and packages for rollback.
 
 GitHub/GitLab CI builds both channels and retains releases. Configure GitLab runner tags to suit the team. Hosted repo names/remotes are retained; rename them only as a separate deliberate operation. Historical build commands and CDN guidance are superseded by this guide.
+
+
+## Required DEV all-sites eligibility — 2026-09-21
+
+The reviewed delivery toolkit is 1.4.3. Every DEV profile declares `skipFeatureDeployment: true`. The toolkit also defaults omitted DEV settings to true, rejects explicit false, and checks the actual emitted AppManifest.xml before accepting a package. This applies to both embedded assets and CDN-hosted DEV builds. PROD eligibility, permanent channel identities, routes and permissions are unchanged.
+
+In the tenant App Catalog, an administrator can select **Enable this app and add it to all sites**, or **Add to all sites** for an existing app. This makes the DEV web parts available to sites and subsites; it does not add them to pages, provision lists or isolate backend data. Site-collection catalogs remain limited to their collection. Confirm the catalog scope, channel identity and affected-subsite availability during acceptance.
+
+This configuration update does not rewrite retained packages. Commit reviewed source and use the standard packaging command to create a new package. Check the emitted deployment flag and catalog version before installation; an older package with a valid file inventory may still lack all-sites eligibility. No tenant deployment is performed by this update.

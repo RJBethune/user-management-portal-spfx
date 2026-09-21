@@ -9,7 +9,8 @@
       "verificationOrigins": [
         "https://usdos.sharepoint.com",
         "https://usdossiolab.sharepoint.com"
-      ]
+      ],
+      "skipFeatureDeployment": true
     },
     "prod": {
       "assetMode": "cdn",
