@@ -17,7 +17,8 @@
       "cdnRoot": "https://irm.azureedge.us/M/user-management-portal-spfx/",
       "verificationOrigins": [
         "https://usdos.sharepoint.com"
-      ]
+      ],
+      "skipFeatureDeployment": true
     }
   }
 }

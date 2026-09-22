@@ -11,10 +11,10 @@ Upload assets only when authorized, then run npm run verify:cdn -- --build relea
 GitHub/GitLab CI builds both channels and retains releases. Configure GitLab runner tags to suit the team. Hosted repo names/remotes are retained; rename them only as a separate deliberate operation. Historical build commands and CDN guidance are superseded by this guide.
 
 
-## Required DEV all-sites eligibility — 2026-09-21
+## All-sites eligibility in both channels — 2026-09-21
 
-The reviewed delivery toolkit is 1.4.3. Every DEV profile declares `skipFeatureDeployment: true`. The toolkit also defaults omitted DEV settings to true, rejects explicit false, and checks the actual emitted AppManifest.xml before accepting a package. This applies to both embedded assets and CDN-hosted DEV builds. PROD eligibility, permanent channel identities, routes and permissions are unchanged.
+The reviewed delivery toolkit is 1.4.4. Every DEV and PROD profile enables `skipFeatureDeployment: true`. The toolkit defaults omitted settings to true, rejects false, and checks the emitted package flag. Permanent IDs, names, CDN routes, permissions and runtime dependencies stay unchanged.
 
-In the tenant App Catalog, an administrator can select **Enable this app and add it to all sites**, or **Add to all sites** for an existing app. This makes the DEV web parts available to sites and subsites; it does not add them to pages, provision lists or isolate backend data. Site-collection catalogs remain limited to their collection. Confirm the catalog scope, channel identity and affected-subsite availability during acceptance.
+In the tenant App Catalog, an administrator can select **Enable this app and add it to all sites**, or **Add to all sites** for an existing app. This makes the selected channel’s web parts available to sites and subsites; it does not add them to pages, provision lists or isolate backend data. Site-collection catalogs remain limited to their collection. Confirm the catalog scope, channel identity and affected-subsite availability during acceptance.
 
 This configuration update does not rewrite retained packages. Commit reviewed source and use the standard packaging command to create a new package. Check the emitted deployment flag and catalog version before installation; an older package with a valid file inventory may still lack all-sites eligibility. No tenant deployment is performed by this update.

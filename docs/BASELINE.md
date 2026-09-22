@@ -10,3 +10,5 @@ Gulp was migrated following [Microsoft’s manual Heft migration guide](https://
 ## Dashboard tooling update — 2026-09-21
 
 Current delivery toolkit: **1.4.3** (previously 1.4.0). Archive SHA-256: `f4020a6f0cc027de6f6d4645278e266ff74f892151a48d7badf65abf63259026`. Earlier rollout descriptions remain above as history. Runtime contracts, dependency pins and identities are unchanged. See the dashboard update record for the check result and recovery path. Review and commit the update, then run both channel builds and SharePoint acceptance.
+
+Current delivery toolkit: **1.4.4**. Both channels enable the all-sites deployment option. Runtime contracts and dependency versions are unchanged. Archive SHA-256: `78e0ba70f26d62f44e263a556441d783712d5a2fa652223ca5049cf47e1157e5`. Source checks and migration evidence: local portfolio audit dated 2026-09-21.
