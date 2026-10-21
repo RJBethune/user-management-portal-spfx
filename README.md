@@ -1,8 +1,10 @@
 # Account Management
 
-Version 1.13.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
+Version 1.14.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
 
 The app uses the shared UX Kit with SharePoint, Light and Dark themes. Its **Access assignments** view helps trusted list administrators review who manages each group, find duplicate assignments and groups without an admin, and add or edit assignments directly in the app.
+
+**Groups you manage** uses an Outlook-style group list and details pane. Search or choose a group on the left; manage its members and owners on the right. Narrow web parts switch between the list and details with **Back to groups**. Changing groups preserves drafts and the selected tab.
 
 ## Build and deliver
 

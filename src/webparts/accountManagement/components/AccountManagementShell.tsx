@@ -53,8 +53,8 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
       </DropdownMenu>
     } />
     {canAdminister && <nav className={styles.viewNavigation} aria-label="Account management views">
-      <Button variant={view === 'membership' ? 'secondary' : 'ghost'} aria-pressed={view === 'membership'} onClick={() => setView('membership')}>Membership</Button>
-      <Button variant={view === 'access' ? 'secondary' : 'ghost'} aria-pressed={view === 'access'} onClick={() => { setAccessOpened(true); setView('access'); }}>Access assignments</Button>
+      <Button variant={view === 'membership' ? 'secondary' : 'ghost'} aria-current={view === 'membership' ? 'page' : undefined} onClick={() => setView('membership')}>Membership</Button>
+      <Button variant={view === 'access' ? 'secondary' : 'ghost'} aria-current={view === 'access' ? 'page' : undefined} onClick={() => { setAccessOpened(true); setView('access'); }}>Access assignments</Button>
     </nav>}
     <div hidden={view !== 'membership'}><AccountManagement {...props} /></div>
     {accessOpened && canAdminister && <div hidden={view !== 'access'}><AccessAssignments key={configKey} service={service} /></div>}

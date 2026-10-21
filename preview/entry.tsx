@@ -19,6 +19,13 @@ const assignments = [
   { Id: 8, User: { Id: 11, Title: 'Sam Rivera', EMail: 'sam.rivera@example.test' }, OfficeGroupRecord: [{ Id: 1 }] },
   { Id: 9, User: { Id: 10, Title: 'Alex Morgan', EMail: 'alex.morgan@example.test' }, OfficeGroupRecord: [] }
 ];
+if (scenario === 'workspace') {
+  ['Finance and budget', 'Employee onboarding', 'IT service coordination', 'Leadership team'].forEach((title, index) => {
+    const Id = index + 4;
+    groups.push({ Id, Title: title, GroupId: `${Id}2345678-1234-1234-1234-123456789012`, IsTeamsConnected: index !== 2 });
+    assignments[0].OfficeGroupRecord.push({ Id });
+  });
+}
 const members = [
   { id: 'person-1', displayName: 'Taylor Chen', userPrincipalName: 'taylor.chen@example.test', mail: 'taylor.chen@example.test', jobTitle: 'Operations coordinator' },
   { id: 'person-2', displayName: 'Jordan Patel', userPrincipalName: 'jordan.patel@example.test', mail: 'jordan.patel@example.test', jobTitle: 'Program officer' }
@@ -47,7 +54,7 @@ const context = {
         result = { value: spec?.columns.map(column => ({ InternalName: column.name, TypeAsString: column.types[0] })) || [] };
       }
       else if (url.includes('/currentuser')) result = { Id: 10, Title: 'Alex Morgan', Email: 'alex@example.test' };
-      else if (url.includes("getbytitle('Managed Groups')")) result = url.endsWith('?$select=Id') ? { Id: 'managed-groups' } : { value: url.includes('$filter=') ? groups.slice(0, 2) : groups };
+      else if (url.includes("getbytitle('Managed Groups')")) result = url.endsWith('?$select=Id') ? { Id: 'managed-groups' } : { value: url.includes('$filter=') ? groups.filter(row => assignments[0].OfficeGroupRecord.some(group => group.Id === row.Id)) : groups };
       else if (url.includes("getbytitle('Group Management Authorized Admins')")) {
         const match = url.match(/\/items\((\d+)\)/);
         result = match ? assignments.find(row => row.Id === Number(match[1])) : { value: url.includes('UserId eq') ? (scenario === 'empty' ? [] : assignments.slice(0, 1)) : assignments };
@@ -88,7 +95,7 @@ const context = {
 function mount(instanceId: string, mountPoint: HTMLElement) {
   const host = createSpfxUiHost({ mountPoint, portalParent: document.body, targetDocument: document, instanceId, style: 'luma', theme: initialTokens });
   host.portalHost.style.position = 'relative'; host.portalHost.style.zIndex = '1000';
-  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.13.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={false} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
+  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.14.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
   return () => { ReactDOM.unmountComponentAtNode(host.appRoot); host.dispose(); };
 }
 const dispose = mount('preview-account-management', document.getElementById('app')!);

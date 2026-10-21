@@ -12,8 +12,7 @@ import {
   Switch
 } from '../../../ui/Controls';
 import {
-  ChevronUp20Regular,
-  ChevronDown20Regular,
+  ArrowLeft20Regular,
   PersonAdd20Regular,
   People20Regular,
   ArrowSync20Regular,
@@ -148,6 +147,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const [groups, setGroups] = React.useState<IOfficeGroup[]>([]);
   const [authorizedCount, setAuthorizedCount] = React.useState<number>(0);
   const [selectedGroupId, setSelectedGroupId] = React.useState<number | undefined>(undefined);
+  const [browsingGroups, setBrowsingGroups] = React.useState(false);
   const [groupSearch, setGroupSearch] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(true);
   const [topError, setTopError] = React.useState<string | undefined>(undefined);
@@ -160,6 +160,20 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
 
   const currentUserKey: string = (props.context.pageContext.user.email || '').toLowerCase();
+
+  const selectGroup = (id: number): void => {
+    setSelectedGroupId(id);
+    setBrowsingGroups(false);
+    host.targetDocument.defaultView?.requestAnimationFrame(() => host.targetDocument.getElementById(host.idFor(`group-heading-${id}`))?.focus());
+  };
+  const backToGroups = (): void => {
+    setBrowsingGroups(true);
+    host.targetDocument.defaultView?.requestAnimationFrame(() => {
+      const target = selectedGroupId === undefined ? 'group-search' : `group-choice-${selectedGroupId}`;
+      const element = host.targetDocument.getElementById(host.idFor(target)) || host.targetDocument.getElementById(host.idFor('group-search'));
+      element?.focus();
+    });
+  };
 
   const updateCard = (id: number, patch: ICardState): void => {
     setCards((prev: { [id: number]: ICardState }) => {
@@ -259,6 +273,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     setLoading(true);
     setTopError(undefined);
     setCards({});
+    setBrowsingGroups(false);
     (async (): Promise<void> => {
       try {
         diag('365 Account Management diagnostic loading authorized groups');
@@ -349,7 +364,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     props.listConfig.listSiteUrl
   ]);
 
-  // Load site permissions for any expanded group; members + owners for manageable ones.
+  // Load site permissions for the selected group; members + owners for manageable ones.
   React.useEffect(() => {
     if (selectedGroupId === undefined) {
       return;
@@ -359,7 +374,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       return;
     }
     const card: ICardState = cards[selectedGroupId] || {};
-    // Fetch the M365 group photo lazily, on expand (was eager for EVERY group — a throttling risk at 30+ groups).
+    // Fetch the selected group's photo lazily; browsing the list does not fetch every photo.
     if (props.showGroupPhotos && !isSharePointGroup(group.groupId) && !groupPhotos[group.id]) {
       const gid: number = group.id;
       graphService.current
@@ -746,25 +761,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
         {!topError && (
           <>
-            <div className={styles.toolbar}>
-              <SearchBox
-                placeholder="Search groups"
-                value={groupSearch}
-                onChange={(_, data) => setGroupSearch(data.value || '')}
-                className={styles.search}
-                aria-label="Search the offices you manage"
-              />
-              <Button
-                appearance="secondary"
-                icon={<Print20Regular />}
-                disabled={printing}
-                onClick={() => {
-                  printAll().catch(() => undefined);
-                }}
-              >
-                {printing ? 'Preparing…' : 'Print all'}
-              </Button>
-            </div>
             {printNote && (
               <MessageBar intent="warning" layout="multiline">
                 <MessageBarBody>{printNote}</MessageBarBody>
@@ -781,10 +777,39 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
               </MessageBar>
             )}
 
-            <div className={styles.grid}>
-              {filtered.map((group: IOfficeGroup) => {
+            <div className={`${styles.workspace} ${browsingGroups || selectedGroupId === undefined ? styles.showGroupList : styles.showGroupDetails}`}>
+              <aside className={styles.groupListPane} aria-label="Browse managed groups">
+                <div className={styles.listToolbar}>
+                  <div className={styles.listHeading}><h3 id={host.idFor('group-list-heading')}>Your groups</h3><span>{groups.length}</span></div>
+                  <SearchBox id={host.idFor('group-search')} placeholder="Search groups" value={groupSearch}
+                    onChange={(_, data) => setGroupSearch(data.value || '')} aria-label="Search the offices you manage" />
+                  {groupSearch && <p className={styles.searchCount} role="status">{filtered.length} of {groups.length} groups</p>}
+                </div>
+                <nav aria-labelledby={host.idFor('group-list-heading')} className={styles.groupNavigation}>
+                  <ul>{filtered.map((group) => <li key={group.id}>
+                    <Button id={host.idFor(`group-choice-${group.id}`)} variant={selectedGroupId === group.id ? 'secondary' : 'ghost'}
+                      className={styles.groupChoice} aria-current={selectedGroupId === group.id ? 'true' : undefined}
+                      aria-label={`Open ${group.title}`} onClick={() => selectGroup(group.id)}>
+                      <span className={styles.groupChoiceContent}>
+                      <span className={styles.groupIcon} aria-hidden="true">{groupPhotos[group.id]
+                        ? <img src={groupPhotos[group.id]} alt="" className={styles.groupPhoto} />
+                        : <span className={styles.groupInitials}>{initials(group.title)}</span>}</span>
+                      <span className={styles.groupChoiceText}><span className={styles.groupChoiceTitle}>{group.title}</span>
+                        <span className={styles.groupChoiceMeta}>{groupKindLabel(group.groupId)}{group.isTeamsConnected ? ' · Teams' : ''}</span>
+                        {cards[group.id]?.processing && <span className={styles.groupChoiceMeta}>Change in progress</span>}
+                      </span>
+                      </span>
+                    </Button>
+                  </li>)}</ul>
+                  {!filtered.length && <div className={styles.noGroups}><p>No groups match this search.</p><Button variant="ghost" onClick={() => setGroupSearch('')}>Clear search</Button></div>}
+                </nav>
+                <div className={styles.listFooter}><Button appearance="transparent" icon={<Print20Regular />} disabled={printing}
+                  onClick={() => { printAll().catch(() => undefined); }}>{printing ? 'Preparing…' : 'Print all groups'}</Button></div>
+              </aside>
+              <div className={styles.readingPane}>
+              {selectedGroupId === undefined && <div className={styles.selectGroupPrompt}><h3>Select a group</h3><p>Choose a group to view its members, owners and available actions.</p></div>}
+              {groups.filter((group) => group.id === selectedGroupId).map((group: IOfficeGroup) => {
                 const card: ICardState = cards[group.id] || {};
-                const expanded: boolean = selectedGroupId === group.id;
                 const manage: IManageability = getManageability(group);
                 const recentForGroup: IRequestSummary[] = recent.filter(
                   (r: IRequestSummary) => (r.groupId || '').toLowerCase() === (group.groupId || '').toLowerCase()
@@ -801,13 +826,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                 const justificationMissing: boolean =
                   props.requireJustification && !(card.justification || '').trim();
                 return (
-                  <article className={styles.groupCard} key={group.id}>
-                    <button
-                      className={styles.groupHeader}
-                      type="button"
-                      onClick={() => setSelectedGroupId(expanded ? undefined : group.id)}
-                      aria-expanded={expanded}
-                    >
+                  <article className={styles.groupDetail} key={group.id} aria-labelledby={host.idFor(`group-heading-${group.id}`)}>
+                    <div className={styles.backToGroups}><Button variant="ghost" icon={<ArrowLeft20Regular />} onClick={backToGroups}>Back to groups</Button></div>
+                    <div className={styles.groupHeader}>
                       <span className={styles.groupIcon} aria-hidden="true">
                         {groupPhotos[group.id] ? (
                           <img src={groupPhotos[group.id]} alt="" className={styles.groupPhoto} />
@@ -818,20 +839,14 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                         )}
                       </span>
                       <span className={styles.groupTitleBlock}>
-                        <span className={styles.groupTitle}>{group.title}</span>
+                        <h3 className={styles.groupTitle} id={host.idFor(`group-heading-${group.id}`)} tabIndex={-1}>{group.title}</h3>
                         <span className={styles.groupMeta}>
                           {groupKindLabel(group.groupId)}
                           {group.mail || group.siteTitle ? ` · ${group.mail || group.siteTitle}` : ''}
                         </span>
                       </span>
-                      {expanded ? (
-                        <ChevronUp20Regular className={styles.chevron} />
-                      ) : (
-                        <ChevronDown20Regular className={styles.chevron} />
-                      )}
-                    </button>
+                    </div>
 
-                    {expanded && (
                       <div className={styles.groupBody}>
                         <div className={styles.metaRow}>
                           {group.visibility && <span>{group.visibility}</span>}
@@ -1241,10 +1256,10 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           );
                         })()}
                       </div>
-                    )}
                   </article>
                 );
               })}
+              </div>
             </div>
           </>
         )}
