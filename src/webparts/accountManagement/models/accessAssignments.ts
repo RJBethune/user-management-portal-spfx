@@ -18,8 +18,18 @@ export interface IAccessOverview {
   unassigned: IManagedGroupReference[];
   duplicateUserIds: number[];
   listUrl: string;
-  newItemUrl: string;
-  editItemUrl: (id: number) => string;
+  canAdd: boolean;
+}
+export interface IAssignmentEditor {
+  id?: number;
+  etag?: string;
+  userId?: number;
+  userName: string;
+  userEmail: string;
+  groupIds: number[];
+  groups: IManagedGroupReference[];
+  multiple: boolean;
+  required: boolean;
 }
 
 /** Both historic single lookups and current multi-value REST representations remain supported. */

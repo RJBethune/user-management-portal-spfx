@@ -15,6 +15,7 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
   const [choice, setChoice] = React.useState<ThemeChoice>(() => readThemeChoice(preferenceKey));
   const [canAdminister, setCanAdminister] = React.useState(false);
   const [view, setView] = React.useState<'membership' | 'access'>('membership');
+  const [accessOpened, setAccessOpened] = React.useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = React.useState(false);
   const configKey = JSON.stringify(props.listConfig);
   const service = React.useMemo(() => new AccessAdministrationService(props.context, props.listConfig), [props.context, configKey]);
@@ -23,6 +24,7 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
     let current = true;
     setCanAdminister(false);
     setView('membership');
+    setAccessOpened(false);
     service.isAvailable().then((value) => { if (current) setCanAdminister(value); }).catch(() => undefined);
     return () => { current = false; };
   }, [service]);
@@ -36,7 +38,12 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
   return <div className={styles.shell}>
     <AppHeader brand={{ name: props.description || '365 Account Management' }} user={{ name: props.userDisplayName }} actions={
       <DropdownMenu open={themeMenuOpen} onOpenChange={setThemeMenuOpen}><DropdownMenuTrigger render={<Button variant="ghost" />} aria-label="Choose theme">Theme</DropdownMenuTrigger>
-        <DropdownMenuContent id={menuId}>
+        <DropdownMenuContent id={menuId} finalFocus={() => {
+          const document = props.host.targetDocument;
+          const active = document.activeElement;
+          // An exiting menu must not steal focus from a newly opened editor or confirmation.
+          return !active || active === document.body || !!document.getElementById(menuId)?.contains(active);
+        }}>
           <DropdownMenuRadioGroup value={choice} onValueChange={selectTheme}>
             <DropdownMenuRadioItem value="sharepoint">SharePoint</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
@@ -47,9 +54,9 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
     } />
     {canAdminister && <nav className={styles.viewNavigation} aria-label="Account management views">
       <Button variant={view === 'membership' ? 'secondary' : 'ghost'} aria-pressed={view === 'membership'} onClick={() => setView('membership')}>Membership</Button>
-      <Button variant={view === 'access' ? 'secondary' : 'ghost'} aria-pressed={view === 'access'} onClick={() => setView('access')}>Access assignments</Button>
+      <Button variant={view === 'access' ? 'secondary' : 'ghost'} aria-pressed={view === 'access'} onClick={() => { setAccessOpened(true); setView('access'); }}>Access assignments</Button>
     </nav>}
     <div hidden={view !== 'membership'}><AccountManagement {...props} /></div>
-    {view === 'access' && canAdminister && <AccessAssignments service={service} />}
+    {accessOpened && canAdminister && <div hidden={view !== 'access'}><AccessAssignments key={configKey} service={service} /></div>}
   </div>;
 }

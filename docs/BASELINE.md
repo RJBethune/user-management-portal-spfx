@@ -1,6 +1,6 @@
 # Baseline and shared UI
 
-Account Management 1.12.0 uses published delivery toolkit **1.5.3**, SPFx **1.23.2**, Heft **1.2.19**, TypeScript **~5.8.0**, React **17.0.1**, and Node **22.23.3**. Both channels retain the original PROD identities and product names. See [package identity and filenames](PACKAGE-IDENTITY.md).
+Account Management 1.13.0 uses published delivery toolkit **1.5.3**, SPFx **1.23.2**, Heft **1.2.19**, TypeScript **~5.8.0**, React **17.0.1**, and Node **22.23.3**. Both channels retain the original PROD identities and product names. See [package identity and filenames](PACKAGE-IDENTITY.md).
 
 The toolkit archive is unchanged: SHA-256 `3390fa4ec29fec6473fd0ff6c2e4ef23bc3f02db35c14558cae328cc6de2582b`. The platform checkout's newer baseline guidance is unreleased; it does not replace this immutable archive. The app adopts its Node 22.23.3 minimum in the engine, local version file and CI.
 
@@ -22,10 +22,10 @@ The webpack adapter ships only Luma profile styles, inline with the web part, pl
 
 ## Validation and future upgrades
 
-Use Node 22.23.3, `npm ci`, and `npm run check`. For UI changes, run `npm run preview:build` and `npm run test:browser`; the browser harness uses fictional records and refuses writes. Install Playwright's Chromium once with `npx playwright install chromium` when needed. Commit source before running both `package:dev` and `package:prod`. Finished builds are in `releases/<channel>/latest/`.
+Use Node 22.23.3, `npm ci`, and `npm run check`. For UI changes, run `npm run preview:build` and `npm run test:browser`; the browser harness uses fictional records and simulates assignment writes in memory. It makes no tenant writes. Install Playwright's Chromium once with `npx playwright install chromium` when needed. Commit source before running both `package:dev` and `package:prod`. Finished builds are in `releases/<channel>/latest/`.
 
 For another upgrade, review released contracts and migration notes, back up dirty or untracked work, create an app branch, and vendor exact archives and hashes. Refresh the lock deliberately. Preserve PROD IDs, Graph scopes, list and property names, configured flows and earlier releases. Do not use `npm audit fix` as an implicit upgrade.
 
-Local tests do not prove tenant acceptance. Validate focus, dialog cancellation, live themes, remount, adjacent web parts, native assignment forms and existing Power Automate writes in authenticated SharePoint. See [known issues](KNOWN-ISSUES.md).
+Local tests do not prove tenant acceptance. Validate focus, dialog cancellation, live themes, remount, adjacent web parts, inline assignment saves and existing Power Automate writes in authenticated SharePoint. See [known issues](KNOWN-ISSUES.md).
 
-Local validation for 1.12.0 passed on Node 22.23.3: a fresh `npm ci`, `npm run check` with seven regression tests, and six Chromium browser tests. The published baseline audit reports one nonblocking advisory because its recorded Node minimum is 22.14.0 and this app now requires 22.23.3. The design detector reported no findings. Tenant acceptance is pending.
+Local validation for 1.13.0 uses Node 22.23.3: a fresh `npm ci`, `npm run check` with 14 regression tests, and 13 Chromium browser tests. Coverage includes current-user permission gates, conditional writes, conflicts, failed saves, field compatibility, directory selection, keyboard behavior, draft retention and desktop/mobile layouts. The published baseline audit reports one nonblocking advisory because its recorded Node minimum is 22.14.0 and this app now requires 22.23.3. Tenant acceptance is pending.

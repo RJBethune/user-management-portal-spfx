@@ -2,9 +2,9 @@
 
 The [UX Kit design guide](https://gitlab.state.gov/BroomfieldPN/ux-kit/-/blob/main/DESIGN.md) governs shared appearance and interaction. The pinned package cohort and Svelte source are recorded in [Baseline](docs/BASELINE.md). This file records app-specific choices.
 
-The app has two views: Membership for authorized group changes, and Access assignments for trusted list administrators. Keep membership drafts mounted when switching views or themes. Use the existing office/group terminology without renaming stored properties, columns or flow fields.
+The app has two views: Membership for authorized group changes, and Access assignments for trusted list administrators. Keep both views' drafts mounted when switching views or themes. Use the existing office/group terminology without renaming stored properties, columns or flow fields.
 
-Access assignments presents an admin-to-group table, search, duplicate-record guidance and groups without assigned admins. Editing stays in the configured SharePoint list's native forms. Empty membership access must not hide administration from an authorized list manager.
+Access assignments presents an admin-to-group table, search, duplicate-record guidance and groups without assigned admins. Add and edit actions open an inline form with Kit inputs, directory results and searchable group checkboxes. Existing records keep their admin identity; the editor changes their groups. Show selection counts and added/removed counts, preserve failed drafts, and require explicit discard before canceling or reloading a changed record. Empty membership access must not hide administration from an authorized list manager.
 
 Use Kit controls and semantic tokens. `src/ui/Controls.tsx` translates existing app event shapes to Kit primitives; it must not restyle those primitives. The stylesheet holds app-specific membership rows, layout and the retained confirmation dialog. The print report intentionally uses a self-contained light stylesheet for paper.
 

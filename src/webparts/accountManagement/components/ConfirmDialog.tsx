@@ -22,7 +22,7 @@ export const ConfirmDialog: React.FunctionComponent<IConfirmDialogProps> = (prop
   const panelRef: React.RefObject<HTMLDivElement> = React.useRef<HTMLDivElement>(null);
   const returnFocusRef: React.MutableRefObject<HTMLElement | undefined> = React.useRef<HTMLElement | undefined>(undefined);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (!props.open) {
       return undefined;
     }

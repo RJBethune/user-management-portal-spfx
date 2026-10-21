@@ -20,9 +20,14 @@ const assignments = [
   { Id: 9, User: { Id: 10, Title: 'Alex Morgan', EMail: 'alex.morgan@example.test' }, OfficeGroupRecord: [] }
 ];
 const members = [
-  { id: 'person-1', displayName: 'Taylor Chen', mail: 'taylor.chen@example.test', jobTitle: 'Operations coordinator' },
-  { id: 'person-2', displayName: 'Jordan Patel', mail: 'jordan.patel@example.test', jobTitle: 'Program officer' }
+  { id: 'person-1', displayName: 'Taylor Chen', userPrincipalName: 'taylor.chen@example.test', mail: 'taylor.chen@example.test', jobTitle: 'Operations coordinator' },
+  { id: 'person-2', displayName: 'Jordan Patel', userPrincipalName: 'jordan.patel@example.test', mail: 'jordan.patel@example.test', jobTitle: 'Program officer' }
 ];
+const versions = new Map<number, number>();
+const writes: unknown[] = [];
+(window as any).previewWrites = writes;
+let conflictShown = false;
+let resolvedAdmin = members[0];
 const context = {
   pageContext: { web: { absoluteUrl: site }, site: { id: 'preview-site' }, user: { loginName: 'alex@example.test', displayName: 'Alex Morgan' } },
   spHttpClient: {
@@ -31,20 +36,49 @@ const context = {
       if (scenario === 'error' && url.includes('User/Title')) return { ok: false, status: 403, json: async () => ({}) };
       let result: unknown = { value: [] };
       if (url.includes('EffectiveBasePermissions')) result = {
-        Id: 'admins', EffectiveBasePermissions: { Low: scenario === 'denied' ? '4' : '2052', High: '0' },
+        Id: 'admins', ListItemEntityTypeFullName: 'SP.Data.AdminsListItem', EffectiveBasePermissions: { Low: scenario === 'denied' ? '4' : scenario === 'noadd' ? '2052' : '2054', High: '0' },
         DefaultViewUrl: '/sites/access/Lists/Admins/AllItems.aspx', DefaultEditFormUrl: '/sites/access/Lists/Admins/EditForm.aspx', DefaultNewFormUrl: '/sites/access/Lists/Admins/NewForm.aspx'
       };
+      else if (url.includes("/fields/getbyinternalnameortitle('User')")) result = { TypeAsString: 'User', ReadOnlyField: false, SelectionGroup: 0 };
+      else if (url.includes("/fields/getbyinternalnameortitle('OfficeGroupRecord')")) result = { TypeAsString: scenario === 'single' ? 'Lookup' : 'LookupMulti', ReadOnlyField: false, Required: false, LookupList: '{managed-groups}' };
       else if (url.includes('/fields')) {
         const titles = [DEFAULT_LIST_CONFIG.groupListTitle, DEFAULT_LIST_CONFIG.requestListTitle, DEFAULT_LIST_CONFIG.authorizedAdminsListTitle, DEFAULT_LIST_CONFIG.sitePermissionsListTitle];
         const spec = EXPECTED_LISTS.find(item => url.includes("getbytitle('" + ({ groups: titles[0], requests: titles[1], admins: titles[2], sitePermissions: titles[3] } as Record<string,string>)[item.key] + "')"));
         result = { value: spec?.columns.map(column => ({ InternalName: column.name, TypeAsString: column.types[0] })) || [] };
       }
       else if (url.includes('/currentuser')) result = { Id: 10, Title: 'Alex Morgan', Email: 'alex@example.test' };
-      else if (url.includes("getbytitle('Managed Groups')")) result = { value: url.includes('$filter=') ? groups.slice(0, 2) : groups };
-      else if (url.includes("getbytitle('Group Management Authorized Admins')")) result = { value: url.includes('UserId eq') ? (scenario === 'empty' ? [] : assignments.slice(0, 1)) : assignments };
-      return { ok: true, status: 200, json: async () => result, text: async () => JSON.stringify(result) };
+      else if (url.includes("getbytitle('Managed Groups')")) result = url.endsWith('?$select=Id') ? { Id: 'managed-groups' } : { value: url.includes('$filter=') ? groups.slice(0, 2) : groups };
+      else if (url.includes("getbytitle('Group Management Authorized Admins')")) {
+        const match = url.match(/\/items\((\d+)\)/);
+        result = match ? assignments.find(row => row.Id === Number(match[1])) : { value: url.includes('UserId eq') ? (scenario === 'empty' ? [] : assignments.slice(0, 1)) : assignments };
+      }
+      const id = Number(url.match(/\/items\((\d+)\)/)?.[1]);
+      return { ok: true, status: 200, headers: { get: () => `"${versions.get(id) || 1}"` }, json: async () => result, text: async () => JSON.stringify(result) };
     },
-    post: async () => { throw new Error('Preview writes are disabled.'); }
+    post: async (raw: string, _configuration: unknown, options: { headers: Record<string, string>; body: string }) => {
+      const url = decodeURIComponent(raw);
+      const body = JSON.parse(options.body);
+      if (url.endsWith('/ensureuser')) {
+        resolvedAdmin = members.find(person => person.userPrincipalName === body.logonName)!;
+        return { ok: !!resolvedAdmin, status: resolvedAdmin ? 200 : 400, json: async () => ({ Id: 20 + members.indexOf(resolvedAdmin), PrincipalType: 1 }) };
+      }
+      if (!url.includes("getbytitle('Group Management Authorized Admins')/items")) throw new Error('Tenant writes are disabled in this preview.');
+      writes.push({ url, body, headers: options.headers });
+      if (scenario === 'write-denied') return { ok: false, status: 403 };
+      if (scenario === 'uncertain') throw new Error('Connection lost');
+      const id = Number(url.match(/\/items\((\d+)\)/)?.[1]);
+      if (scenario === 'conflict' && !conflictShown) {
+        conflictShown = true;
+        const row = assignments.find(item => item.Id === id)!;
+        row.OfficeGroupRecord = [{ Id: 3 }]; versions.set(id, 2);
+        return { ok: false, status: 412 };
+      }
+      if (id && options.headers['IF-MATCH'] !== `"${versions.get(id) || 1}"`) return { ok: false, status: 412 };
+      const selected = Array.isArray(body.OfficeGroupRecordId?.results) ? body.OfficeGroupRecordId.results : body.OfficeGroupRecordId ? [body.OfficeGroupRecordId] : [];
+      if (id) { assignments.find(row => row.Id === id)!.OfficeGroupRecord = selected.map((groupId: number) => ({ Id: groupId })); versions.set(id, (versions.get(id) || 1) + 1); }
+      else assignments.push({ Id: 10 + assignments.length, User: { Id: body.UserId, Title: resolvedAdmin.displayName, EMail: resolvedAdmin.mail }, OfficeGroupRecord: selected.map((groupId: number) => ({ Id: groupId })) });
+      return { ok: true, status: id ? 204 : 201 };
+    }
   },
   msGraphClientFactory: { getClient: async () => ({ api: (path: string) => {
     const request = { header: () => request, responseType: () => request, get: async () => ({ value: path.includes('/owners') ? members.slice(0, 1) : members }) };
@@ -54,7 +88,7 @@ const context = {
 function mount(instanceId: string, mountPoint: HTMLElement) {
   const host = createSpfxUiHost({ mountPoint, portalParent: document.body, targetDocument: document, instanceId, style: 'luma', theme: initialTokens });
   host.portalHost.style.position = 'relative'; host.portalHost.style.zIndex = '1000';
-  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.12.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={false} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
+  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.13.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={false} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
   return () => { ReactDOM.unmountComponentAtNode(host.appRoot); host.dispose(); };
 }
 const dispose = mount('preview-account-management', document.getElementById('app')!);

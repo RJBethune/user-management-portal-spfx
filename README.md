@@ -1,8 +1,8 @@
 # Account Management
 
-Version 1.12.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
+Version 1.13.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
 
-The app uses the shared UX Kit with SharePoint, Light and Dark themes. Its **Access assignments** view helps trusted list administrators review who manages each group, find duplicate assignments and groups without an admin, and open the existing SharePoint forms to make changes.
+The app uses the shared UX Kit with SharePoint, Light and Dark themes. Its **Access assignments** view helps trusted list administrators review who manages each group, find duplicate assignments and groups without an admin, and add or edit assignments directly in the app.
 
 ## Build and deliver
 
@@ -25,7 +25,7 @@ A Microsoft 365 group GUID routes changes through the existing SharePoint reques
 
 An integer SharePoint group ID routes changes through SharePoint REST in the signed-in user's context. The Authorized Admins list controls which groups the UI shows; SharePoint permissions enforce the actual change.
 
-An individual admin can have several groups assigned through `OfficeGroupRecord`. The page's `visibleOffices` setting only narrows what that admin sees. The Access assignments overview requires Manage Lists and Edit Items on the Authorized Admins list; it reads records and opens native forms without writing grants itself.
+An individual admin can have several groups assigned through `OfficeGroupRecord`. The page's `visibleOffices` setting only narrows what that admin sees. Access administration requires Manage Lists and Edit Items on the Authorized Admins list, plus Add Items for new records. SharePoint enforces list and item permissions on every save. Concurrent changes require an explicit reload; the app never overwrites a newer assignment silently.
 
 ## Configuration
 

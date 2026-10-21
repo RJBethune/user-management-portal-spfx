@@ -1,13 +1,120 @@
 const { test, expect } = require('@playwright/test');
 
-test('administrators can search complete assignments and open the configured edit form', async ({ page }) => {
+async function edit(page, scenario = '') {
+  await page.goto('/' + scenario);
+  await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit assignment 8 for Sam Rivera' }).click();
+  await expect(page.getByRole('heading', { name: 'Edit groups for Sam Rivera' })).toBeFocused();
+}
+test('inline edits save selected groups and immediately refresh coverage', async ({ page }) => {
+  await edit(page);
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('searchbox', { name: 'Find groups to assign' }).fill('New office');
+  await expect(page.getByRole('status').filter({ hasText: '2 selected' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  await expect(page.getByText('Assignment saved.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Groups without an assigned admin (0)' })).toBeVisible();
+  const writes = await page.evaluate(() => window.previewWrites);
+  expect(writes).toHaveLength(1);
+  expect(writes[0].body.OfficeGroupRecordId.results).toEqual([1, 3]);
+  expect(writes[0].body.UserId).toBeUndefined();
+  expect(writes[0].headers['IF-MATCH']).toBe('"1"');
+});
+test('new admin selection saves the site user ID; Add Items is required', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
+  await page.getByRole('button', { name: 'Add an admin assignment', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save assignment', exact: true })).toBeDisabled();
+  await page.getByRole('searchbox', { name: 'Find an admin by name or email' }).fill('Taylor');
+  await page.getByRole('button', { name: 'Choose Taylor Chen, taylor.chen@example.test' }).click();
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Edit assignment .* for Taylor Chen/ })).toBeVisible();
+  expect((await page.evaluate(() => window.previewWrites))[0].body.UserId).toBe(20);
+  await page.goto('/?scenario=noadd');
+  await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Add an admin assignment', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Edit assignment 8 for Sam Rivera' }).click();
+  await expect(page.getByRole('heading', { name: 'Edit groups for Sam Rivera' })).toBeVisible();
+});
+test('drafts survive view and theme switches; cancel requires discard and returns focus', async ({ page }) => {
+  await edit(page);
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('button', { name: 'Membership', exact: true }).click();
+  await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose theme' }).click();
+  await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Discard changes', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Edit assignment 8 for Sam Rivera' })).toBeFocused();
+  expect(await page.evaluate(() => window.previewWrites)).toHaveLength(0);
+});
+test('conflicts preserve the draft and require explicit reload before another save', async ({ page }) => {
+  await edit(page, '?scenario=conflict');
+  await page.getByRole('checkbox', { name: /Regional coordination/ }).check();
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('changed or was removed');
+  await expect(page.getByRole('checkbox', { name: /Regional coordination/ })).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Save assignment', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Reload assignment', exact: true }).click();
+  await page.getByRole('button', { name: 'Discard and reload', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Operations team/ })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: /Operations team/ }).check();
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  await expect(page.getByText('Assignment saved.', { exact: false })).toBeVisible();
+  expect((await page.evaluate(() => window.previewWrites))[1].headers['IF-MATCH']).toBe('"2"');
+});
+test('denied and unconfirmed writes keep drafts and never report success', async ({ page }) => {
+  for (const scenario of ['write-denied', 'uncertain']) {
+    await edit(page, '?scenario=' + scenario);
+    await page.getByRole('checkbox', { name: /New office/ }).check();
+    await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText(scenario === 'write-denied' ? 'SharePoint denied' : 'could not be confirmed');
+    await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+    await expect(page.getByText('Assignment saved.', { exact: false })).toHaveCount(0);
+    expect(await page.evaluate(() => window.previewWrites)).toHaveLength(1);
+    if (scenario === 'uncertain') await expect(page.getByRole('button', { name: 'Save assignment', exact: true })).toBeDisabled();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.getByRole('button', { name: 'Discard changes', exact: true }).click();
+  }
+});
+test('single-group assignments replace selection and can clear optional groups', async ({ page }) => {
+  await edit(page, '?scenario=single');
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await expect(page.getByRole('checkbox', { name: /Operations team/ })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: /New office/ }).uncheck();
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  await expect(page.getByText('Assignment saved.', { exact: false })).toBeVisible();
+  expect((await page.evaluate(() => window.previewWrites))[0].body.OfficeGroupRecordId).toBeNull();
+});
+test('editor supports keyboard selection and fits desktop and mobile', async ({ page }) => {
+  require('node:fs').mkdirSync('scratch/screenshots', { recursive: true });
+  await page.setViewportSize({ width: 1280, height: 960 });
+  await edit(page);
+  await page.getByRole('checkbox', { name: /New office/ }).focus();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  await page.screenshot({ path: 'scratch/screenshots/editor-desktop.png', fullPage: true, animations: 'disabled' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Choose theme' }).click();
+  await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+  await page.screenshot({ path: 'scratch/screenshots/editor-mobile.png', fullPage: true, animations: 'disabled' });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('administrators can search complete assignments and open the inline editor', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Groups without an assigned admin (1)' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Edit assignment 7 for Alex Morgan' })).toHaveAttribute('href', /EditForm.aspx\?ID=7$/);
+  await expect(page.getByRole('button', { name: 'Edit assignment 7 for Alex Morgan' })).toBeVisible();
   await page.getByRole('searchbox', { name: 'Search admins or assigned groups' }).fill('Sam');
-  await expect(page.getByRole('link', { name: 'Edit assignment 8 for Sam Rivera' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Edit assignment 7 for Alex Morgan' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Edit assignment 8 for Sam Rivera' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit assignment 7 for Alex Morgan' })).toHaveCount(0);
   await page.getByRole('searchbox', { name: 'Search admins or assigned groups' }).fill('No matching admin');
   await expect(page.getByText('No admins or groups match this search.')).toBeVisible();
 });
@@ -16,7 +123,7 @@ test('assignment administration does not depend on having a membership assignmen
   await page.goto('/?scenario=empty');
   await expect(page.getByText('You are not currently authorized to manage any offices here.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Edit assignment 7 for Alex Morgan' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit assignment 7 for Alex Morgan' })).toBeVisible();
 });
 
 test('ordinary membership admins cannot open access administration; revoked reads show an error', async ({ page }) => {
@@ -26,7 +133,7 @@ test('ordinary membership admins cannot open access administration; revoked read
   await page.goto('/?scenario=error');
   await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('HTTP 403');
-  await expect(page.getByRole('link', { name: /Edit assignment/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Edit assignment/ })).toHaveCount(0);
 });
 
 test('theme changes preserve drafts and confirmation focus returns to its trigger', async ({ page }) => {
@@ -40,6 +147,7 @@ test('theme changes preserve drafts and confirmation focus returns to its trigge
   const remove = page.getByRole('button', { name: 'Remove', exact: true }).first();
   await remove.click();
   await expect(page.getByRole('alertdialog')).toBeVisible();
+  await expect(page.getByRole('alertdialog')).toBeFocused();
   await expect(page.getByRole('alertdialog').getByRole('textbox', { name: 'Reason for this change (required)' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
