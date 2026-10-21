@@ -96,6 +96,11 @@ test('editor supports keyboard selection and fits desktop and mobile', async ({ 
   require('node:fs').mkdirSync('scratch/screenshots', { recursive: true });
   await page.setViewportSize({ width: 1280, height: 960 });
   await edit(page);
+  const listBox = await page.getByRole('navigation', { name: 'Admin assignments', exact: true }).boundingBox();
+  const editorBox = await page.getByRole('form', { name: 'Edit admin assignment' }).boundingBox();
+  expect(editorBox.x).toBeGreaterThanOrEqual(listBox.x + listBox.width);
+  const headerBox = await page.getByRole('region', { name: 'Account Management header', exact: true }).boundingBox();
+  expect(headerBox.height).toBe(48);
   await page.getByRole('checkbox', { name: /New office/ }).focus();
   await page.keyboard.press('Space');
   await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
@@ -177,7 +182,7 @@ test('membership and assignments fit desktop and narrow layouts across themes', 
   await page.getByRole('tab', { name: 'Members (2)', exact: true }).click();
   await page.screenshot({ path: 'scratch/screenshots/membership-desktop.png', fullPage: true });
   await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
-  await expect(page.getByRole('table')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Admin assignments', exact: true })).toBeVisible();
   await page.screenshot({ path: 'scratch/screenshots/assignments-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: 'scratch/screenshots/assignments-mobile.png', fullPage: true });
@@ -190,4 +195,111 @@ test('membership and assignments fit desktop and narrow layouts across themes', 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     if (theme === 'Dark') await page.screenshot({ path: 'scratch/screenshots/membership-dark-mobile.png', fullPage: true, animations: 'disabled' });
   }
+});
+
+test('admin drafts stay separate, including duplicate records, when another record saves', async ({ page }) => {
+  await edit(page);
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  const sam = page.getByRole('button', { name: 'Edit assignment 8 for Sam Rivera' });
+  await expect(sam).toContainText('Unsaved changes');
+  await expect(page.getByRole('button', { name: 'Refresh assignments' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Edit assignment 7 for Alex Morgan' }).click();
+  await expect(page.getByText('You are editing record 7.', { exact: false })).toBeVisible();
+  await page.getByRole('checkbox', { name: /Regional coordination/ }).uncheck();
+  await page.getByRole('button', { name: 'Edit assignment 9 for Alex Morgan' }).click();
+  await expect(page.getByText('You are editing record 9.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Operations team/ })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  await expect(page.getByText('Assignment saved.', { exact: false })).toBeVisible();
+  await sam.click();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Operations team/ })).toBeChecked();
+  await page.getByRole('button', { name: 'Edit assignment 7 for Alex Morgan' }).click();
+  await expect(page.getByRole('checkbox', { name: /Regional coordination/ })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).not.toBeChecked();
+  const ids = await page.locator('[id]').evaluateAll(nodes => nodes.map(node => node.id));
+  expect(new Set(ids).size).toBe(ids.length);
+  const writes = await page.evaluate(() => window.previewWrites);
+  expect(writes).toHaveLength(1);
+  expect(writes[0].url).toContain('/items(9)');
+  expect(writes[0].body.OfficeGroupRecordId.results).toEqual([3]);
+});
+
+test('new assignments and selected editors survive admin filtering and switching', async ({ page }) => {
+  await edit(page);
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('searchbox', { name: 'Search admins or assigned groups' }).fill('Alex');
+  await expect(page.getByRole('heading', { name: 'Edit groups for Sam Rivera' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Admin assignments' }).getByRole('button')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Add an admin assignment', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Find an admin by name or email' }).fill('Taylor');
+  await page.getByRole('button', { name: 'Choose Taylor Chen, taylor.chen@example.test' }).click();
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('button', { name: 'Edit assignment 7 for Alex Morgan' }).click();
+  await page.getByRole('button', { name: 'Continue new assignment', exact: true }).click();
+  await expect(page.getByRole('form', { name: 'Add admin assignment' })).toContainText('Taylor Chen');
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  await page.getByRole('searchbox', { name: 'Search admins or assigned groups' }).fill('');
+  await page.getByRole('button', { name: 'Edit assignment 8 for Sam Rivera' }).click();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  expect(await page.evaluate(() => window.previewWrites)).toHaveLength(0);
+});
+
+test('narrow assignment columns restore list focus and keep drafts, including filtered records', async ({ page }) => {
+  await edit(page);
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.locator('#app').evaluate(node => { node.style.maxWidth = '600px'; });
+  await page.getByRole('button', { name: 'Back to admins', exact: true }).click();
+  const sam = page.getByRole('button', { name: 'Edit assignment 8 for Sam Rivera' });
+  await expect(sam).toBeFocused();
+  await expect(page.getByRole('form', { name: 'Edit admin assignment' })).toHaveCount(0);
+  await sam.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Edit groups for Sam Rivera' })).toBeFocused();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  await page.locator('#app').evaluate(node => { node.style.maxWidth = ''; });
+  await page.getByRole('searchbox', { name: 'Search admins or assigned groups' }).fill('Alex');
+  await page.locator('#app').evaluate(node => { node.style.maxWidth = '600px'; });
+  await page.getByRole('button', { name: 'Back to admins', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Search admins or assigned groups' })).toBeFocused();
+  expect(await page.locator('#app').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  await page.locator('#app').evaluate(node => { node.style.maxWidth = ''; });
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByRole('alertdialog', { name: 'Discard assignment changes?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+});
+
+test('saving locks record navigation and prevents duplicate writes', async ({ page }) => {
+  await edit(page, '?scenario=pending-save');
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saving…', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Edit assignment 7 for Alex Morgan' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Add an admin assignment', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Refresh assignments' })).toBeDisabled();
+  await page.waitForFunction(() => typeof window.finishPreviewSave === 'function');
+  await page.evaluate(() => window.finishPreviewSave());
+  await expect(page.getByText('Assignment saved.', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => window.previewWrites)).toHaveLength(1);
+});
+
+test('refresh after a save keeps drafts reachable when a record disappears or Add Items is revoked', async ({ page }) => {
+  await edit(page, '?scenario=inventory-change');
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('button', { name: 'Add an admin assignment', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Find an admin by name or email' }).fill('Taylor');
+  await page.getByRole('button', { name: 'Choose Taylor Chen, taylor.chen@example.test' }).click();
+  await page.getByRole('button', { name: 'Edit assignment 9 for Alex Morgan' }).click();
+  await page.getByRole('checkbox', { name: /New office/ }).check();
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  const sam = page.getByRole('button', { name: 'Edit assignment 8 for Sam Rivera' });
+  await expect(sam).toContainText('Not in the latest list');
+  await sam.click();
+  await expect(page.getByRole('checkbox', { name: /New office/ })).toBeChecked();
+  await page.getByRole('button', { name: 'Continue new assignment', exact: true }).click();
+  await expect(page.getByRole('form', { name: 'Add admin assignment' })).toContainText('Taylor Chen');
+  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('permissions no longer allow adding assignments');
+  expect(await page.evaluate(() => window.previewWrites)).toHaveLength(1);
 });

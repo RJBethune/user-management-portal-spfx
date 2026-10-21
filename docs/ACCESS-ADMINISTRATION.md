@@ -7,16 +7,16 @@ The view is available to users with **Manage Lists** and **Edit Items** on the c
 ## Assign or remove access
 
 1. Open **Access assignments** and search for the admin or group.
-2. Choose **Edit assignment**, or **Add an admin assignment** for a new admin. The editor opens in the current view.
+2. Select an admin in the left list, or choose **Add an admin assignment** for a new admin. Their editable groups appear on the right. Narrow columns show one pane at a time with **Back to admins**.
 3. For a new assignment, search by name or email and choose an individual person. Existing records keep their admin identity. Keep one record per admin where possible.
 4. Select the groups this admin can manage, then choose **Save assignment**. Group search retains selections that are hidden by the search. Historical single-value lookup fields allow one selection.
 5. The overview refreshes automatically. The affected admin can reload their membership page to see the updated group list.
 
 To remove access to a group, clear it from **every** assignment record for that admin. Multiple records combine their groups; removing one occurrence may leave another grant. If the lookup field is optional, clearing all groups removes access from that record without deleting it. The overview flags duplicate admin records and shows groups without an assigned admin. Unavailable groups must be explicitly removed before saving. Records with missing users need repair through **Open assignments list**.
 
-Drafts survive switching views and themes. Canceling a changed draft asks before discarding it. A concurrent edit or deletion blocks saving until you explicitly reload the assignment. Permission errors keep the draft. If a connection failure leaves the save unconfirmed, close the editor and refresh before retrying; the original save may have succeeded. There are no automatic write retries.
+Drafts survive switching admins, views and themes, including a new admin assignment. Each assignment record keeps its own draft; unsaved changes are marked in the admin list. Saving one record preserves drafts for other records. Canceling a changed draft asks before discarding it. Refresh is disabled until drafts are saved or discarded. A concurrent edit or deletion blocks saving until you explicitly reload the assignment. Permission errors keep the draft. If a connection failure leaves the save unconfirmed, close the editor and refresh before retrying; the original save may have succeeded. There are no automatic write retries.
 
-The overview reads all available pages of the two configured lists. Search filters the assignment table. The groups-without-an-admin section remains a view of the full loaded inventory, regardless of search. The page's `visibleOffices` setting does not filter this administrative view.
+The overview reads all available pages of the two configured lists. Search filters the admin list without hiding the selected editor or discarding its draft. Duplicate records show their record number and a warning in the editor. Expand **Groups without an assigned admin** to review the full loaded inventory, regardless of search. The page's `visibleOffices` setting does not filter this administrative view.
 
 ## What the assignment means
 

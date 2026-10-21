@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { SpfxUiHost, useSpfxUiId } from '@spfx-kit/ui-profile';
 import { AppHeader } from '@spfx-kit/ui-patterns/app-header';
+import { DarkTheme20Regular, PeopleTeam20Regular } from '@fluentui/react-icons';
 import { Button } from '@spfx-kit/ui-profile/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@spfx-kit/ui-profile/dropdown-menu';
 import { applyAppTheme, readThemeChoice, ThemeChoice } from '../../../ui/theme';
@@ -36,9 +37,9 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
     try { localStorage.setItem(preferenceKey, next); } catch { /* The theme still works when storage is unavailable. */ }
   };
   return <div className={styles.shell}>
-    <AppHeader brand={{ name: props.description || '365 Account Management' }} user={{ name: props.userDisplayName }} actions={
-      <DropdownMenu open={themeMenuOpen} onOpenChange={setThemeMenuOpen}><DropdownMenuTrigger render={<Button variant="ghost" />} aria-label="Choose theme">Theme</DropdownMenuTrigger>
-        <DropdownMenuContent id={menuId} finalFocus={() => {
+    <AppHeader role="region" aria-label="Account Management header" brand={{ name: props.description || '365 Account Management', mark: <PeopleTeam20Regular aria-hidden="true" /> }} user={{ name: props.userDisplayName }} actions={
+      <DropdownMenu open={themeMenuOpen} onOpenChange={setThemeMenuOpen}><DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Choose theme" title="Choose theme" />}><DarkTheme20Regular aria-hidden="true" /></DropdownMenuTrigger>
+        <DropdownMenuContent id={menuId} align="end" style={{ width: 'max-content', whiteSpace: 'nowrap' }} finalFocus={() => {
           const document = props.host.targetDocument;
           const active = document.activeElement;
           // An exiting menu must not steal focus from a newly opened editor or confirmation.

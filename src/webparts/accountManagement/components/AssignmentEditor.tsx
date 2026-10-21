@@ -16,14 +16,18 @@ interface IProps {
   initial: IAssignmentEditor;
   service: AccessAdministrationService;
   existingEmails: string[];
+  sessionKey: string;
+  active: boolean;
+  activation: number;
+  onStateChange: (key: string, dirty: boolean, busy: boolean) => void;
   onCancel: () => void;
   onSaved: () => void;
 }
 const sameIds = (a: number[], b: number[]): boolean => a.length === b.length && a.every((id) => b.indexOf(id) !== -1);
 
-export function AssignmentEditor({ initial, service, existingEmails, onCancel, onSaved }: IProps): JSX.Element {
+export function AssignmentEditor({ initial, service, existingEmails, sessionKey, active, activation, onStateChange, onCancel, onSaved }: IProps): JSX.Element {
   const host = useSpfxUiHost();
-  const prefix = useSpfxUiId('assignment-editor');
+  const prefix = useSpfxUiId(`assignment-editor-${sessionKey}`);
   const heading = React.useRef<HTMLHeadingElement>(null);
   const groupSearch = React.useRef<HTMLInputElement>(null);
   const inFlight = React.useRef(false);
@@ -41,8 +45,9 @@ export function AssignmentEditor({ initial, service, existingEmails, onCancel, o
   const [confirm, setConfirm] = React.useState<'cancel' | 'reload'>();
   const dirty = !!admin || !!adminQuery || !sameIds(groupIds, model.groupIds);
   const creating = model.id === undefined;
-  React.useEffect(() => { heading.current?.focus(); }, []);
-  React.useEffect(() => { if (admin) groupSearch.current?.focus(); }, [admin]);
+  React.useEffect(() => { if (active) heading.current?.focus(); }, [active, activation]);
+  React.useEffect(() => { if (admin && active) groupSearch.current?.focus(); }, [admin, active]);
+  React.useLayoutEffect(() => { onStateChange(sessionKey, dirty, saving); }, [sessionKey, dirty, saving, onStateChange]);
   React.useEffect(() => {
     if (!dirty && !saving) return undefined;
     const window = host.targetDocument.defaultView;
@@ -53,7 +58,7 @@ export function AssignmentEditor({ initial, service, existingEmails, onCancel, o
   React.useEffect(() => {
     let current = true;
     setResults([]); setSearchError(undefined);
-    if (admin || adminQuery.trim().length < 2) { setSearching(false); return undefined; }
+    if (!active || admin || adminQuery.trim().length < 2) { setSearching(false); return undefined; }
     setSearching(true);
     const timer = setTimeout(() => {
       service.searchAdmins(adminQuery).then((users) => { if (current) setResults(users); }, (reason) => {
@@ -61,7 +66,7 @@ export function AssignmentEditor({ initial, service, existingEmails, onCancel, o
       }).then(() => { if (current) setSearching(false); }).catch(() => undefined);
     }, 300);
     return () => { current = false; clearTimeout(timer); };
-  }, [adminQuery, admin, service]);
+  }, [adminQuery, admin, active, service]);
 
   const save = async (): Promise<void> => {
     if (inFlight.current || blocked) return;
@@ -99,11 +104,12 @@ export function AssignmentEditor({ initial, service, existingEmails, onCancel, o
 
   return <form className={styles.editor} aria-label={creating ? 'Add admin assignment' : 'Edit admin assignment'} onSubmit={(event) => { event.preventDefault(); save().catch(() => undefined); }}>
     <div><h3 ref={heading} tabIndex={-1}>{creating ? 'Add an admin assignment' : `Edit groups for ${model.userName}`}</h3>
-      <p>Choose the groups this admin can manage. Changes take effect when you save.</p></div>
+      {!creating && <p className={styles.secondary}>{model.userEmail}</p>}
+      <p className={styles.editorHelp}>Choose the groups this admin can manage. Changes take effect when you save.</p></div>
     {error && <Notice tone="danger" live="assertive">{error}</Notice>}
-    <fieldset disabled={saving} className={styles.editorFields}>
+    {creating && <fieldset disabled={saving} className={styles.editorFields}>
       <legend>Admin</legend>
-      {!creating ? <p><strong>{model.userName}</strong><span className={styles.secondary}>{model.userEmail}</span></p> : <>
+      <>
         {admin ? <div className={styles.toolbar}><p><strong>{admin.displayName}</strong><span className={styles.secondary}>{admin.userPrincipalName}</span></p>
           <Button type="button" variant="outline" onClick={() => { setAdmin(undefined); setAdminQuery(''); }}>Change admin</Button></div> : <>
           <label htmlFor={`${prefix}-admin`}>Find an admin by name or email</label>
@@ -113,12 +119,12 @@ export function AssignmentEditor({ initial, service, existingEmails, onCancel, o
           {searchError && <Notice tone="danger" live="assertive">{searchError}</Notice>}
           {!searching && !searchError && adminQuery.trim().length >= 2 && !results.length && <p role="status">No admins found. Try a different name or email.</p>}
           {results.length > 0 && <ul className={styles.people} aria-label="Directory results">{results.map((person) => <li key={person.id}>
-            <Button type="button" variant="outline" aria-label={`Choose ${person.displayName}, ${person.userPrincipalName}`} onClick={() => setAdmin(person)}>{person.displayName} · {person.userPrincipalName}</Button>
+            <Button type="button" variant="outline" aria-label={`Choose ${person.displayName}, ${person.userPrincipalName}`} onClick={() => setAdmin(person)}><span className={styles.personResult}>{person.displayName}<span className={styles.secondary}>{person.userPrincipalName}</span></span></Button>
           </li>)}</ul>}
         </>}
         {duplicate && <Notice tone="warning">This admin already has an assignment. Access combines all their records. Edit the existing record when possible.</Notice>}
-      </>}
-    </fieldset>
+      </>
+    </fieldset>}
     <fieldset disabled={saving} className={styles.editorFields}>
       <legend>Groups this admin can manage</legend>
       <p className={styles.note}>{model.multiple ? 'Select every group this admin needs.' : 'This list allows one group per assignment.'} {model.required ? 'At least one group is required.' : 'Clear all groups to remove access from this record.'}</p>
@@ -139,7 +145,7 @@ export function AssignmentEditor({ initial, service, existingEmails, onCancel, o
       <Button type="button" variant="outline" disabled={saving} onClick={() => dirty ? setConfirm('cancel') : onCancel()}>Cancel</Button>
       {blocked && !creating && <Button type="button" variant="outline" disabled={saving} onClick={() => setConfirm('reload')}>Reload assignment</Button>}
     </div>
-    <ConfirmDialog open={!!confirm} ariaLabel="Discard assignment changes?" onDismiss={() => setConfirm(undefined)}>
+    <ConfirmDialog open={active && !!confirm} ariaLabel="Discard assignment changes?" onDismiss={() => setConfirm(undefined)}>
       <h3>Discard assignment changes?</h3><p>{confirm === 'reload' ? 'Reloading replaces your draft with the current saved assignment.' : 'Your changes have not been saved.'}</p>
       <div className={styles.toolbar}><Button type="button" variant="outline" onClick={() => setConfirm(undefined)}>Keep editing</Button><Button type="button" onClick={() => { discard().catch(() => undefined); }}>{confirm === 'reload' ? 'Discard and reload' : 'Discard changes'}</Button></div>
     </ConfirmDialog>

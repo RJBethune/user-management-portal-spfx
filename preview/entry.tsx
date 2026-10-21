@@ -43,7 +43,7 @@ const context = {
       if (scenario === 'error' && url.includes('User/Title')) return { ok: false, status: 403, json: async () => ({}) };
       let result: unknown = { value: [] };
       if (url.includes('EffectiveBasePermissions')) result = {
-        Id: 'admins', ListItemEntityTypeFullName: 'SP.Data.AdminsListItem', EffectiveBasePermissions: { Low: scenario === 'denied' ? '4' : scenario === 'noadd' ? '2052' : '2054', High: '0' },
+        Id: 'admins', ListItemEntityTypeFullName: 'SP.Data.AdminsListItem', EffectiveBasePermissions: { Low: scenario === 'denied' ? '4' : scenario === 'noadd' || (scenario === 'inventory-change' && writes.length > 0) ? '2052' : '2054', High: '0' },
         DefaultViewUrl: '/sites/access/Lists/Admins/AllItems.aspx', DefaultEditFormUrl: '/sites/access/Lists/Admins/EditForm.aspx', DefaultNewFormUrl: '/sites/access/Lists/Admins/NewForm.aspx'
       };
       else if (url.includes("/fields/getbyinternalnameortitle('User')")) result = { TypeAsString: 'User', ReadOnlyField: false, SelectionGroup: 0 };
@@ -71,6 +71,7 @@ const context = {
       }
       if (!url.includes("getbytitle('Group Management Authorized Admins')/items")) throw new Error('Tenant writes are disabled in this preview.');
       writes.push({ url, body, headers: options.headers });
+      if (scenario === 'pending-save') await new Promise<void>((resolve) => { (window as any).finishPreviewSave = resolve; });
       if (scenario === 'write-denied') return { ok: false, status: 403 };
       if (scenario === 'uncertain') throw new Error('Connection lost');
       const id = Number(url.match(/\/items\((\d+)\)/)?.[1]);
@@ -84,6 +85,7 @@ const context = {
       const selected = Array.isArray(body.OfficeGroupRecordId?.results) ? body.OfficeGroupRecordId.results : body.OfficeGroupRecordId ? [body.OfficeGroupRecordId] : [];
       if (id) { assignments.find(row => row.Id === id)!.OfficeGroupRecord = selected.map((groupId: number) => ({ Id: groupId })); versions.set(id, (versions.get(id) || 1) + 1); }
       else assignments.push({ Id: 10 + assignments.length, User: { Id: body.UserId, Title: resolvedAdmin.displayName, EMail: resolvedAdmin.mail }, OfficeGroupRecord: selected.map((groupId: number) => ({ Id: groupId })) });
+      if (scenario === 'inventory-change') assignments.splice(assignments.findIndex(row => row.Id === 8), 1);
       return { ok: true, status: id ? 204 : 201 };
     }
   },
@@ -95,7 +97,7 @@ const context = {
 function mount(instanceId: string, mountPoint: HTMLElement) {
   const host = createSpfxUiHost({ mountPoint, portalParent: document.body, targetDocument: document, instanceId, style: 'luma', theme: initialTokens });
   host.portalHost.style.position = 'relative'; host.portalHost.style.zIndex = '1000';
-  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.14.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
+  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.15.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
   return () => { ReactDOM.unmountComponentAtNode(host.appRoot); host.dispose(); };
 }
 const dispose = mount('preview-account-management', document.getElementById('app')!);
