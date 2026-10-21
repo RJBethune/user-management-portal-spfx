@@ -1,3 +1,7 @@
 {
-  "patchFiles": [".ci/webpack-resource-limits.cjs", ".ci/webpack-cdn-compat.cjs"]
+  "patchFiles": [
+    "./config/webpack-patch/ui-profile.cjs",
+    ".ci/webpack-resource-limits.cjs",
+    ".ci/webpack-cdn-compat.cjs"
+  ]
 }

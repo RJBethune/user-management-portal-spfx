@@ -1,0 +1,21 @@
+{
+  "kind": "spfx-kit-ui-library-theme",
+  "version": 1,
+  "id": "8f6bcff6-bc73-4116-811a-d40a6065a20c",
+  "name": "Svelte",
+  "preferences": {
+    "style": "Luma",
+    "baseColor": "Zinc",
+    "theme": "Blue",
+    "chartColor": "Blue",
+    "font": "Inter",
+    "fontHeading": "inherit",
+    "fontMono": "Geist Mono",
+    "iconLibrary": "HugeIcons",
+    "radius": "Default",
+    "cornerShape": "Squircle",
+    "menuColor": "Default",
+    "menuAppearance": "Translucent",
+    "menuAccent": "Subtle"
+  }
+}

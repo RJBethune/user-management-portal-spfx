@@ -1,16 +1,31 @@
-# Baseline upgrades
+# Baseline and shared UI
 
-Current delivery toolkit: **1.5.3**, SHA-256 `3390fa4ec29fec6473fd0ff6c2e4ef23bc3f02db35c14558cae328cc6de2582b`. Both channels retain the original PROD identities and product names. See [package identity and filenames](PACKAGE-IDENTITY.md). Runtime/toolchain dependencies are unchanged. The records below describe earlier adoption steps.
+Account Management 1.12.0 uses published delivery toolkit **1.5.3**, SPFx **1.23.2**, Heft **1.2.19**, TypeScript **~5.8.0**, React **17.0.1**, and Node **22.23.3**. Both channels retain the original PROD identities and product names. See [package identity and filenames](PACKAGE-IDENTITY.md).
 
-Pinned delivery toolkit 1.4.0; SPFx 1.23.2; Heft 1.2.19; TypeScript ~5.8.0; React 17.0.1; Fluent 9.70.0 and the complete baseline Griffel/Tabster 8.5.5/Keyborg 2.6.0 closure. Both Windows and Linux Sass binaries are declared. npm run check verifies the archive, identities, installed lock closure, source build and app regressions.
+The toolkit archive is unchanged: SHA-256 `3390fa4ec29fec6473fd0ff6c2e4ef23bc3f02db35c14558cae328cc6de2582b`. The platform checkout's newer baseline guidance is unreleased; it does not replace this immutable archive. The app adopts its Node 22.23.3 minimum in the engine, local version file and CI.
 
-For an update, review the released contracts and migration notes, preserve local work, create an app branch, vendor the immutable archive/hash, update explicit pins and lock, run a fresh npm ci, all checks and both deliveries. Compare PROD IDs, permissions, defaults and assets, then accept in SharePoint before promotion. Keep earlier releases. Do not use npm audit fix as an implicit upgrade.
+## Pinned UX Kit cohort
 
-Gulp was migrated following [Microsoft’s manual Heft migration guide](https://learn.microsoft.com/en-us/sharepoint/dev/spfx/toolchain/migrate-gulptoolchain-hefttoolchain-manual). Previous Gulp/ESLint configuration is retained under migration/legacy for reference.
+These compatible published archives are vendored locally and verified against the UX Kit release ledger. They are the adopted cohort, not a claim that no newer Kit versions exist.
 
+| Package | Version | Archive SHA-256 |
+| --- | --- | --- |
+| `@spfx-kit/ui-profile` | 0.3.0 | `f8cf993e8a295d56a918e440ed524552c8eed9392f3174da799c98f7d782cac0` |
+| `@spfx-kit/ui-theme` | 0.9.0 | `b9c7803c917a0a7c9d99fe1d29fc75c633dada078abc953d12de2799ef29c7ff` |
+| `@spfx-kit/ui-patterns` | 0.5.0 | `2dbc30fc85addb53a51ef0585ee3ff54dfb26f48bdb07e847d63c8c81500a9c6` |
 
-## Dashboard tooling update — 2026-09-21
+`vendor/ux-kit-svelte.json` is the shared Svelte style, ID `8f6bcff6-bc73-4116-811a-d40a6065a20c`. Its exact bytes supply the artifact revision digest. `npm run theme:compile` produces the runtime snapshot; `theme:check` verifies it and all three archives. No runtime dependency points at a sibling checkout or GitLab.
 
-Historical delivery toolkit: **1.4.3** (previously 1.4.0). Archive SHA-256: `f4020a6f0cc027de6f6d4645278e266ff74f892151a48d7badf65abf63259026`. Earlier rollout descriptions remain above as history. Runtime contracts, dependency pins and identities are unchanged. See the dashboard update record for the check result and recovery path. Review and commit the update, then run both channel builds and SharePoint acceptance.
+Kit controls, header, tabs, notices and status badges replace the Fluent component consumers. Compatibility pins remain at Fluent 9.70.0, Tabster 8.5.5 and Keyborg 2.6.0 until a separate dependency cleanup. The custom confirmation dialog remains as required by the app contract. Its portal now belongs to the Kit host and receives the same theme.
 
-Historical delivery toolkit: **1.4.4**. Both channels enable the all-sites deployment option. Runtime contracts and dependency versions are unchanged. Archive SHA-256: `78e0ba70f26d62f44e263a556441d783712d5a2fa652223ca5049cf47e1157e5`. Source checks and migration evidence: local portfolio audit dated 2026-09-21.
+The webpack adapter ships only Luma profile styles, inline with the web part, plus shared theme and pattern CSS and local fonts. Existing classic CDN loading patches remain. SharePoint, Light and Dark preferences are stored per site and user. Live SharePoint theme changes do not remount the app.
+
+## Validation and future upgrades
+
+Use Node 22.23.3, `npm ci`, and `npm run check`. For UI changes, run `npm run preview:build` and `npm run test:browser`; the browser harness uses fictional records and refuses writes. Install Playwright's Chromium once with `npx playwright install chromium` when needed. Commit source before running both `package:dev` and `package:prod`. Finished builds are in `releases/<channel>/latest/`.
+
+For another upgrade, review released contracts and migration notes, back up dirty or untracked work, create an app branch, and vendor exact archives and hashes. Refresh the lock deliberately. Preserve PROD IDs, Graph scopes, list and property names, configured flows and earlier releases. Do not use `npm audit fix` as an implicit upgrade.
+
+Local tests do not prove tenant acceptance. Validate focus, dialog cancellation, live themes, remount, adjacent web parts, native assignment forms and existing Power Automate writes in authenticated SharePoint. See [known issues](KNOWN-ISSUES.md).
+
+Local validation for 1.12.0 passed on Node 22.23.3: a fresh `npm ci`, `npm run check` with seven regression tests, and six Chromium browser tests. The published baseline audit reports one nonblocking advisory because its recorded Node minimum is 22.14.0 and this app now requires 22.23.3. The design detector reported no findings. Tenant acceptance is pending.

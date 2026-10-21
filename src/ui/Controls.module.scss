@@ -1,0 +1,4 @@
+.switch, .loading { display: inline-flex; align-items: center; gap: 8px; }
+.actions { display: flex; justify-content: flex-end; }
+.link { color: var(--spfx-ui-sharepoint-link, var(--ui-library-link, var(--spfx-ui-color-primary))); text-decoration: underline; text-underline-offset: 3px; }
+.link:focus-visible { outline: 2px solid var(--spfx-ui-color-ring); outline-offset: 2px; }

@@ -14,7 +14,9 @@
     "CDN-02",
     "CDN-11",
     "ACCOUNT-01",
-    "UI-ACCEPTANCE"
+    "UI-ACCEPTANCE",
+    "ACCESS-01",
+    "KIT-01"
   ],
   "attribution": "M/EX - Executive Office",
   "requirePickerTitle": true

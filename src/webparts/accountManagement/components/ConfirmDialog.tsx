@@ -1,5 +1,6 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
+import { useSpfxUiHost } from '@spfx-kit/ui-profile';
 import styles from './AccountManagement.module.scss';
 
 export interface IConfirmDialogProps {
@@ -17,6 +18,7 @@ export interface IConfirmDialogProps {
  * (reading 'set')"), so we avoid it entirely.
  */
 export const ConfirmDialog: React.FunctionComponent<IConfirmDialogProps> = (props: IConfirmDialogProps) => {
+  const host = useSpfxUiHost();
   const panelRef: React.RefObject<HTMLDivElement> = React.useRef<HTMLDivElement>(null);
   const returnFocusRef: React.MutableRefObject<HTMLElement | undefined> = React.useRef<HTMLElement | undefined>(undefined);
 
@@ -24,7 +26,7 @@ export const ConfirmDialog: React.FunctionComponent<IConfirmDialogProps> = (prop
     if (!props.open) {
       return undefined;
     }
-    returnFocusRef.current = (document.activeElement as HTMLElement) || undefined;
+    returnFocusRef.current = (host.targetDocument.activeElement as HTMLElement) || undefined;
     if (panelRef.current) {
       panelRef.current.focus();
     }
@@ -58,7 +60,7 @@ export const ConfirmDialog: React.FunctionComponent<IConfirmDialogProps> = (prop
     }
     const first: HTMLElement = focusables[0];
     const last: HTMLElement = focusables[focusables.length - 1];
-    const active: Element | null = document.activeElement;
+    const active: Element | null = host.targetDocument.activeElement;
     if (e.shiftKey && (active === first || active === panelRef.current)) {
       e.preventDefault();
       last.focus();
@@ -89,6 +91,6 @@ export const ConfirmDialog: React.FunctionComponent<IConfirmDialogProps> = (prop
         {props.children}
       </div>
     </div>,
-    document.body
+    host.portalHost
   );
 };

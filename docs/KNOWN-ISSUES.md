@@ -8,4 +8,7 @@
 - UI-ACCEPTANCE — Validate Fluent focus, menus, dialogs, remount and adjacent web parts in authenticated SharePoint after the baseline alignment.
 - ACCOUNT-01 — External Power Automate flow authorization and Microsoft 365 membership writes require tenant acceptance. Keep the existing lists, Graph read scopes and configured flow connections; this migration does not provision or replace them.
 
+- ACCESS-01 — Version 1.12.0 adds a read-only assignment overview and links to existing native list forms. Validate with a list owner, an ordinary assigned admin, an owner with no membership assignment, duplicate admin rows, and a revoked permission. Confirm native forms edit the configured list site and refresh reflects saved changes. Existing list item permissions determine which records SharePoint returns; the app does not elevate or repair them.
+- KIT-01 — Version 1.12.0 adopts the compatible published Kit cohort documented in BASELINE.md. Validate SharePoint/Light/Dark, custom confirmation focus, two adjacent instances and live section-theme changes in the tenant. Browser fixtures cannot prove the SharePoint shell or CDN behavior.
+
 Record new defects with version/channel, steps, expected/actual results, evidence, affected module, resolution and a regression check. Keep credentials and personal data out of shared issue notes.

@@ -1,6 +1,5 @@
 import * as React from 'react';
 import {
-  FluentProvider,
   Spinner,
   MessageBar,
   MessageBarBody,
@@ -11,7 +10,7 @@ import {
   Link,
   Button,
   Switch
-} from '@fluentui/react-components';
+} from '../../../ui/Controls';
 import {
   ChevronUp20Regular,
   ChevronDown20Regular,
@@ -22,11 +21,10 @@ import {
   Dismiss20Regular,
   Print20Regular,
   Warning20Regular,
-  Clock16Regular,
-  CheckmarkCircle16Regular,
-  ErrorCircle16Regular
 } from '@fluentui/react-icons';
-import { buildFluentTheme } from './theme';
+import { useSpfxUiHost } from '@spfx-kit/ui-profile';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@spfx-kit/ui-profile/tabs';
+import { StatusBadge, defineStatusTones } from '@spfx-kit/ui-patterns/status-badge';
 import styles from './AccountManagement.module.scss';
 import { IAccountManagementProps } from './IAccountManagementProps';
 import ListHealthPanel from './ListHealthPanel';
@@ -40,7 +38,9 @@ import { getManageability, IManageability } from '../shared/manageability';
 import { friendlyError, isTimeout, requestResultText } from '../shared/errors';
 import { diag } from '../shared/log';
 
-/** Fluent v9 MessageBar intent (replaces Fluent v8 MessageBarType). */
+const requestTones = defineStatusTones({ Completed: 'success', Failed: 'danger', Error: 'danger', Pending: 'warning' });
+
+/** Existing alert state maps onto the shared Kit Notice tones. */
 type AlertIntent = 'success' | 'error' | 'warning' | 'info';
 
 interface IAlert {
@@ -111,16 +111,6 @@ function initials(name: string): string {
   );
 }
 
-// Deterministic tile color for a group (mimics the Entra/Teams default colored group tile).
-function colorFor(name: string): string {
-  const palette: string[] = ['#2564cf', '#0b6a0b', '#a4262c', '#8764b8', '#038387', '#ca5010', '#5c2e91', '#486991'];
-  const n: string = name || '';
-  let sum: number = 0;
-  for (let i: number = 0; i < n.length; i++) {
-    sum += n.charCodeAt(i);
-  }
-  return palette[sum % palette.length];
-}
 
 function formatDateTime(iso: string | undefined): string {
   if (!iso) {
@@ -146,6 +136,7 @@ function applyOfficeScope(all: IOfficeGroup[], spec: string): IOfficeGroup[] {
 }
 
 const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (props: IAccountManagementProps) => {
+  const host = useSpfxUiHost();
   const spService: React.MutableRefObject<AccountManagementService> = React.useRef<AccountManagementService>(
     new AccountManagementService(props.context, props.listConfig)
   );
@@ -167,8 +158,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const [printNote, setPrintNote] = React.useState<string | undefined>(undefined);
   const [groupPhotos, setGroupPhotos] = React.useState<{ [id: number]: string }>({});
 
-  // Fluent v9 theme (maps the SharePoint section theme onto v9 brand tokens).
-  const theme = React.useMemo(() => buildFluentTheme(props.sectionTheme), [props.sectionTheme]);
 
   const currentUserKey: string = (props.context.pageContext.user.email || '').toLowerCase();
 
@@ -682,9 +671,6 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   // each row already shows the member's name, email, and title.
   const renderPersona = (inner: JSX.Element): JSX.Element => inner;
 
-  const versionBadge: JSX.Element = (
-    <div className={styles.diagnosticBadge}>365 Account Management v{props.buildVersion}</div>
-  );
 
   // A missing required list is explained by the setup panel, so don't also show the raw
   // "a required SharePoint list was not found" error on top of it.
@@ -693,12 +679,11 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
 
   if (loading) {
     return (
-      <FluentProvider theme={theme} style={{ background: 'transparent' }}>
+      <>
         <section className={styles.accountManagement}>
-          {versionBadge}
           <Spinner label="Loading group access..." size="medium" />
         </section>
-      </FluentProvider>
+      </>
     );
   }
 
@@ -707,9 +692,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     diag('365 Account Management diagnostic no authorized groups; web part hidden');
     const scopedOut: boolean = authorizedCount > 0;
     return (
-      <FluentProvider theme={theme} style={{ background: 'transparent' }}>
+      <>
         <section className={styles.accountManagement}>
-          {versionBadge}
           {health && <ListHealthPanel health={health} isEditMode={props.isEditMode} />}
           <MessageBar intent="info" layout="multiline">
             <MessageBarBody>
@@ -719,7 +703,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
             </MessageBarBody>
           </MessageBar>
         </section>
-      </FluentProvider>
+      </>
     );
   }
 
@@ -734,11 +718,10 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   });
 
   return (
-    <FluentProvider theme={theme} style={{ background: 'transparent' }}>
+    <>
       <section className={styles.accountManagement}>
-        {versionBadge}
         <div className={styles.header}>
-          <h2>{props.description || '365 Account Management'}</h2>
+          <h2>Groups you manage</h2>
           <p>{props.introText || 'Add or remove Microsoft 365 group members for groups you are authorized to manage.'}</p>
           {props.helpText && (
             <p className={styles.helpLine}>
@@ -829,7 +812,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                         {groupPhotos[group.id] ? (
                           <img src={groupPhotos[group.id]} alt="" className={styles.groupPhoto} />
                         ) : (
-                          <span className={styles.groupInitials} style={{ backgroundColor: colorFor(group.title) }}>
+                          <span className={styles.groupInitials}>
                             {initials(group.title)}
                           </span>
                         )}
@@ -908,7 +891,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 </span>
                               </div>
                               {props.requireJustification && (
-                                <Field label="Reason for this change" required>
+                                <Field id={host.idFor(`remove-reason-${group.id}`)} label="Reason for this change" required>
                                   <Textarea
                                     rows={2}
                                     value={card.justification || ''}
@@ -920,8 +903,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                               )}
                               <div className={styles.confirmActions}>
                                 <Button
-                                  appearance="primary"
-                                  className={justificationMissing ? undefined : styles.dangerButton}
+                                  appearance="destructive"
                                   disabled={justificationMissing}
                                   onClick={() => submit(group, card.confirmRemoveAction || 'Remove Member', card.confirmRemove as IUser, card.justification)}
                                 >
@@ -1009,7 +991,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                             {card.selectedUser && (
                               <>
                                 {props.requireJustification && (
-                                  <Field label="Reason for this change" required>
+                                  <Field id={host.idFor(`add-reason-${group.id}`)} label="Reason for this change" required>
                                     <Textarea
                                       rows={2}
                                       value={card.justification || ''}
@@ -1055,29 +1037,29 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                           const keys: string[] = ['members', showOwners ? 'owners' : '', showSites ? 'sites' : '', showRecent ? 'recent' : ''].filter((k: string) => !!k);
                           const active: string = keys.indexOf(card.activeTab || '') !== -1 ? (card.activeTab as string) : 'members';
                           return (
-                            <div className={styles.tabs}>
-                              <div className={styles.tabStrip} role="tablist" aria-label="Group details">
-                                <button type="button" role="tab" aria-selected={active === 'members'} className={`${styles.tab} ${active === 'members' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'members' })}>
+                            <Tabs value={active} onValueChange={(value) => updateCard(group.id, { activeTab: String(value) })}>
+                              <TabsList aria-label="Group details">
+                                <TabsTrigger id={host.idFor(`group-${group.id}-members-tab`)} value="members">
                                   Members{card.members ? ` (${card.members.length})` : ''}
-                                </button>
+                                </TabsTrigger>
                                 {showOwners && (
-                                  <button type="button" role="tab" aria-selected={active === 'owners'} className={`${styles.tab} ${active === 'owners' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'owners' })}>
+                                  <TabsTrigger id={host.idFor(`group-${group.id}-owners-tab`)} value="owners">
                                     Owners{card.owners ? ` (${card.owners.length})` : ''}
-                                  </button>
+                                  </TabsTrigger>
                                 )}
                                 {showSites && (
-                                  <button type="button" role="tab" aria-selected={active === 'sites'} className={`${styles.tab} ${active === 'sites' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'sites' })}>
+                                  <TabsTrigger id={host.idFor(`group-${group.id}-sites-tab`)} value="sites">
                                     Used On{card.sitePerms ? ` (${card.sitePerms.length})` : ''}
-                                  </button>
+                                  </TabsTrigger>
                                 )}
                                 {showRecent && (
-                                  <button type="button" role="tab" aria-selected={active === 'recent'} className={`${styles.tab} ${active === 'recent' ? styles.tabActive : ''}`} onClick={() => updateCard(group.id, { activeTab: 'recent' })}>
+                                  <TabsTrigger id={host.idFor(`group-${group.id}-recent-tab`)} value="recent">
                                     Recent Requests ({recentForGroup.length})
-                                  </button>
+                                  </TabsTrigger>
                                 )}
-                              </div>
-                              <div className={styles.tabPanel} role="tabpanel">
-                                <div hidden={active !== 'members'}>
+                              </TabsList>
+                              <div className={styles.tabPanel} >
+                                <TabsContent id={host.idFor(`group-${group.id}-members-panel`)} value="members" keepMounted>
                         <div className={styles.membersHeader}>
                           <h3>Members{card.members ? ` (${card.members.length})` : ''}</h3>
                           <Button
@@ -1159,8 +1141,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                             )}
                           </div>
                         )}
-                                </div>
-                                <div hidden={active !== 'owners'}>
+                                </TabsContent>
+                                <TabsContent id={host.idFor(`group-${group.id}-owners-panel`)} value="owners" keepMounted>
                         {!isSharePointGroup(group.groupId) && manage.manageable && (card.owners || card.ownersLoading || card.ownersError) && (
                           <div className={styles.subSection}>
                             <h3>Owners</h3>
@@ -1199,8 +1181,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                             )}
                           </div>
                         )}
-                                </div>
-                                <div hidden={active !== 'sites'}>
+                                </TabsContent>
+                                <TabsContent id={host.idFor(`group-${group.id}-sites-panel`)} value="sites" keepMounted>
                         {card.sitePerms && card.sitePerms.length > 0 && (
                           <div className={styles.subSection}>
                             <h3>Used on these sites</h3>
@@ -1222,8 +1204,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                             </div>
                           </div>
                         )}
-                                </div>
-                                <div hidden={active !== 'recent'}>
+                                </TabsContent>
+                                <TabsContent id={host.idFor(`group-${group.id}-recent-panel`)} value="recent" keepMounted>
                               <div className={styles.recentScroll}>
                                 <div className={styles.recentList}>
                                   {recentForGroup.map((r: IRequestSummary) => {
@@ -1243,24 +1225,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                       .join(' · ');
                                     return (
                                       <div className={styles.recentRow} key={`req-${r.id}`}>
-                                        <span
-                                          className={`${styles.statusPill} ${
-                                            displayStatus === 'Completed'
-                                              ? styles.statusCompleted
-                                              : displayStatus === 'Failed' || displayStatus === 'Error'
-                                              ? styles.statusFailed
-                                              : styles.statusPending
-                                          }`}
-                                        >
-                                          {displayStatus === 'Completed' ? (
-                                            <CheckmarkCircle16Regular />
-                                          ) : displayStatus === 'Failed' || displayStatus === 'Error' ? (
-                                            <ErrorCircle16Regular />
-                                          ) : (
-                                            <Clock16Regular />
-                                          )}
-                                          {displayStatus}
-                                        </span>
+                                        <StatusBadge status={displayStatus} tones={requestTones} />
                                         <span className={styles.memberDetails}>
                                           <strong>{r.action}: {r.memberDisplayName}</strong>
                                           <span>{detail}</span>
@@ -1270,9 +1235,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                   })}
                                 </div>
                               </div>
-                                </div>
+                                </TabsContent>
                               </div>
-                            </div>
+                            </Tabs>
                           );
                         })()}
                       </div>
@@ -1284,7 +1249,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
           </>
         )}
       </section>
-    </FluentProvider>
+    </>
   );
 };
 

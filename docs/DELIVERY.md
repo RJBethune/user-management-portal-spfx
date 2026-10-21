@@ -2,7 +2,7 @@
 
 Both channels use the original PROD IDs and product names. [Package identity and filenames](PACKAGE-IDENTITY.md) is authoritative for channel identity, catalog isolation and renamed upload files; it supersedes earlier split-channel guidance below.
 
-Run npm ci on Node 22.14 or later in the 22.x line, then npm run check. Commit the source and run npm run package:dev or npm run package:prod. These commands validate and package isolated source; they do not deploy.
+Run npm ci on Node 22.23.3 or later in the 22.x line, then npm run check. Commit the source and run npm run package:dev or npm run package:prod. These commands validate and package isolated source; they do not deploy.
 
 The single SPPKG and matching assets, hashes, build manifest, check logs and DEPLOYMENT.md are in releases/dev/latest/ or releases/prod/latest/. Immutable history is in releases/<channel>/<version>/<build-id>/. One package contains 1 web part(s). Both channels reuse the original PROD IDs; no extra package per web part is required.
 

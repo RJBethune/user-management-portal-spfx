@@ -36,3 +36,5 @@ src/**/*.module.scss.ts
 /.npm/
 /lib-commonjs/
 /jest-output/
+/test-results/
+/playwright-report/

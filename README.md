@@ -1,78 +1,36 @@
 # Account Management
 
-Version 1.11.3. Independent app repository in the SPFx Applications portfolio.
+Version 1.12.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
 
-Run npm ci, npm run check, then npm run package:dev or npm run package:prod. Find the finished package in releases/dev/latest/ or releases/prod/latest/. Source must be committed before packaging.
+The app uses the shared UX Kit with SharePoint, Light and Dark themes. Its **Access assignments** view helps trusted list administrators review who manages each group, find duplicate assignments and groups without an admin, and open the existing SharePoint forms to make changes.
 
-[Architecture](ARCHITECTURE.md) · [Delivery](docs/DELIVERY.md) · [Baseline upgrades](docs/BASELINE.md) · [Known issues](docs/KNOWN-ISSUES.md) · [Migration](docs/MIGRATION.md).
+## Build and deliver
 
-## Product and setup reference
+Use Node 22.23.3 and run these commands from the repository root:
 
-The following setup documentation is retained from upstream. Use the delivery and baseline guides above for current build commands and versions.
-
-
-SharePoint Framework (SPFx) web part that lets designated office admins **add and remove members of
-Microsoft 365 groups and SharePoint site groups** from a SharePoint page — with a live Entra profile
-card per member, per-page office scoping, and a configurable backend.
-
-## How it works
-
-The web part branches on the **Group ID format** of each configured office:
-
-| Group ID in the Group list | Path | What happens |
-|---|---|---|
-| **GUID** (Entra/O365 group) | Request + flow | Files a `Pending` item to a SharePoint **request list**; a **Power Automate flow** (running as a service account or app registration with `GroupMember.ReadWrite.All`) performs the Graph change and writes the status back. The web part polls for the result. |
-| **Integer** (SharePoint site group) | Direct REST | Changes membership directly via SharePoint REST in the signed-in user's context — no flow. |
-
-The web part holds **read-only** Graph scopes (`GroupMember.Read.All`, `User.ReadBasic.All` — escalate the
-search to `User.Read.All` for production); all O365 writes are delegated to the flow.
-
-Authorization is data-driven via a SharePoint **Authorized Admins** list (per user → office), enforced
-client-side for display and **re-checked server-side by the flow** on the request item's `Created By` —
-that server-side re-check applies to the **O365 (Request + flow)** path. The **SharePoint-group (Direct
-REST) path has no flow**: those changes run as the signed-in user and are bounded by that user's own
-SharePoint permissions on the target site, so the Authorized Admins list gates the **UI**, not the
-SharePoint API. Treat the Authorized Admins, Group, and Site-Permissions lists as **privileged,
-admin-managed configuration** — their `SiteUrl` values are trusted, and only same-tenant sites are used.
-
-## Required SharePoint lists
-
-Provisioned by hand (titles are configurable in the property pane; defaults shown):
-
-- **Group (offices)** — `Group Management Test Data`: one row per office. Key column `GroupId` (Entra GUID
-  for O365, integer for SharePoint groups). Optional `GroupType` column flags unmanageable types
-  (`Dynamic`, `Distribution`, `MailEnabledSecurity`, `RoleAssignable`, `OnPrem`).
-- **Authorized Admins** — `Group Management Authorized Admins`: Person column `User` + Lookup
-  `OfficeGroupRecord` into the Group list (must project `GroupId`).
-- **Request** — `Group Membership Audit Test`: the queue the O365 flow processes. `Status` is single-line
-  text (`Pending` → `Completed`/`Failed`); plus `Action`, `GroupId`, `MemberId`, `TargetUserPrincipalName`,
-  `ResultMessage`, `AuthorizationChecked` (Yes/No), `AuthorizationResult`, `CorrelationId`, etc.
-
-## Property pane
-
-- **Display** — Title.
-- **Offices on this page** — comma-separated office names/Group IDs to show (blank = all you're authorized for).
-- **Data source** — the three list titles (point different pages at different request lists to route to
-  different flows).
-- **Behavior** — O365 status-wait timeout (seconds) and a verbose-logging toggle (off by default).
-
-## Build
-
-```bash
-npm install
-gulp serve                                   # local workbench
-gulp clean && gulp bundle --ship && gulp package-solution --ship
+```sh
+npm ci
+npm run check
+npm run preview:build
+npm run test:browser
 ```
 
-The `.sppkg` is written to `sharepoint/solution/`. For production in a CDN-fronted tenant, set
-`config/package-solution.json` `includeClientSideAssets=false` and `config/write-manifests.json`
-`cdnBasePath`, then host the assets on the CDN.
+Commit source, then run `npm run package:dev` and `npm run package:prod`. Each channel produces one SPPKG in `releases/<channel>/latest/`. Packaging does not deploy. Both channels retain the original PROD identities.
 
-## Not in this repo
+[Architecture](ARCHITECTURE.md) · [Delivery](docs/DELIVERY.md) · [Baseline](docs/BASELINE.md) · [Known issues](docs/KNOWN-ISSUES.md).
 
-The **Power Automate flow** and the **manual list provisioning** are separate deliverables (the flow design
-and provisioning specs are maintained outside the source tree).
+## Membership and authorization
 
-## Stack
+A Microsoft 365 group GUID routes changes through the existing SharePoint request list and Power Automate flow. The web part has read-only Graph scopes. The flow must independently authorize the request's system-created `AuthorId` before writing membership changes.
 
-SPFx 1.21.1 · React 17 · Fluent UI 8 · `@pnp/spfx-controls-react` (LivePersona) · TypeScript 5.3.
+An integer SharePoint group ID routes changes through SharePoint REST in the signed-in user's context. The Authorized Admins list controls which groups the UI shows; SharePoint permissions enforce the actual change.
+
+An individual admin can have several groups assigned through `OfficeGroupRecord`. The page's `visibleOffices` setting only narrows what that admin sees. The Access assignments overview requires Manage Lists and Edit Items on the Authorized Admins list; it reads records and opens native forms without writing grants itself.
+
+## Configuration
+
+The four existing list defaults are `Managed Groups`, `Group Membership Requests`, `Group Management Authorized Admins`, and `Group Site Permissions`. List titles and the list site URL remain configurable in the web-part settings. Existing property and column internal names are preserved.
+
+The property pane also controls introductory and support text, office scope, request timeout, group photos, initial expansion, justification and diagnostics. Version, channel and M/EX attribution remain at the bottom.
+
+[Access administration](docs/ACCESS-ADMINISTRATION.md) explains assignments and their limits. Use [list setup](docs/SharePoint-Lists-Setup.md) and the [flow contract](docs/PowerAutomate-Flow-Spec.md) for configuration. Provisioning and the deployed flows remain external to this application.

@@ -10,11 +10,14 @@ import {
   PropertyPaneToggle
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
-import { ThemeProvider, IReadonlyTheme } from '@microsoft/sp-component-base';
-import { FluentProvider, MessageBar, MessageBarBody, webLightTheme } from '@fluentui/react-components';
+import { ThemeProvider, ThemeChangedEventArgs, IReadonlyTheme } from '@microsoft/sp-component-base';
+import { createSpfxUiHost, SpfxUiHost, SpfxUiHostProvider } from '@spfx-kit/ui-profile';
+import { MessageBar, MessageBarBody } from '../../ui/Controls';
+import { initialTokens } from '../../ui/theme';
+import '../../ui/styles';
 
 import * as strings from 'AccountManagementWebPartStrings';
-import AccountManagement from './components/AccountManagement';
+import { AccountManagementShell } from './components/AccountManagementShell';
 import { IListConfig, DEFAULT_LIST_CONFIG } from './services/AccountManagementService';
 import { toMessage } from './shared/errors';
 import { setVerbose } from './shared/log';
@@ -62,9 +65,9 @@ class ErrorBoundary extends React.Component<IErrorBoundaryProps, IErrorBoundaryS
   public render(): React.ReactNode {
     if (this.state.errorMessage) {
       return React.createElement(
-        FluentProvider,
-        { theme: webLightTheme, style: { background: 'transparent' } },
-        React.createElement(MessageBar, { intent: 'error' }, React.createElement(MessageBarBody, {}, this.state.errorMessage))
+        MessageBar,
+        { intent: 'error' },
+        React.createElement(MessageBarBody, {}, this.state.errorMessage)
       );
     }
     return this.props.children;
@@ -75,12 +78,26 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
   public static readonly buildVersion: string = buildInfo.version;
 
   private _theme: IReadonlyTheme | undefined;
+  private _themeProvider: ThemeProvider | undefined;
+  private _uiHost: SpfxUiHost | undefined;
   private _windowErrorHandler: ((e: ErrorEvent) => void) | undefined;
   private _unhandledRejectionHandler: ((e: PromiseRejectionEvent) => void) | undefined;
 
   protected onInit(): Promise<void> {
     const themeProvider: ThemeProvider = this.context.serviceScope.consume(ThemeProvider.serviceKey);
+    this._themeProvider = themeProvider;
     this._theme = themeProvider.tryGetTheme();
+    themeProvider.themeChangedEvent.add(this, this._onThemeChanged);
+    this._uiHost = createSpfxUiHost({
+      mountPoint: this.domElement,
+      portalParent: this.domElement.ownerDocument.body,
+      targetDocument: this.domElement.ownerDocument,
+      instanceId: this.instanceId,
+      style: 'luma',
+      theme: initialTokens
+    });
+    this._uiHost.portalHost.style.position = 'relative';
+    this._uiHost.portalHost.style.zIndex = '1000';
     if (this.properties.showGroupPhotos === undefined) {
       this.properties.showGroupPhotos = true; // default ON; preserves prior behavior for existing instances
     }
@@ -94,6 +111,7 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
 
   public render(): void {
     try {
+      if (!this._uiHost) return;
       setVerbose(!!this.properties.verboseLogging);
       const listConfig: IListConfig = {
         requestListTitle: this.properties.requestListTitle || DEFAULT_LIST_CONFIG.requestListTitle,
@@ -109,9 +127,10 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
           ? this.properties.pollTimeoutSeconds
           : 120;
       const element: React.ReactElement = React.createElement(
-        ErrorBoundary,
-        {},
-        React.createElement(AccountManagement, {
+        SpfxUiHostProvider,
+        { host: this._uiHost },
+        React.createElement(ErrorBoundary, {}, React.createElement(AccountManagementShell, {
+          host: this._uiHost,
           description: this.properties.description,
           userDisplayName: this.context.pageContext.user.displayName,
           context: this.context,
@@ -128,9 +147,9 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
           showGroupPhotos: this.properties.showGroupPhotos !== false,
           // Schema warnings are shown only while the page is being edited — the audience who can fix them.
           isEditMode: this.displayMode === DisplayMode.Edit
-        })
+        }))
       );
-      ReactDom.render(element, this.domElement);
+      ReactDom.render(element, this._uiHost.appRoot);
     } catch (e) {
       this._renderFallbackError(e);
     }
@@ -138,7 +157,17 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
 
   protected onDispose(): void {
     this._unregisterDiagnostics();
-    ReactDom.unmountComponentAtNode(this.domElement);
+    if (this._themeProvider) this._themeProvider.themeChangedEvent.remove(this, this._onThemeChanged);
+    if (this._uiHost) {
+      ReactDom.unmountComponentAtNode(this._uiHost.appRoot);
+      this._uiHost.dispose();
+      this._uiHost = undefined;
+    }
+  }
+
+  private _onThemeChanged(args: ThemeChangedEventArgs): void {
+    this._theme = args.theme;
+    this.render();
   }
 
   protected get dataVersion(): Version {
@@ -249,14 +278,17 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
   }
 
   private _renderFallbackError(e: unknown): void {
-    const div: HTMLDivElement = document.createElement('div');
-    div.style.color = '#a4262c';
+    const target = this._uiHost ? this._uiHost.appRoot : this.domElement;
+    ReactDom.unmountComponentAtNode(target);
+    const div: HTMLDivElement = target.ownerDocument.createElement('div');
+    div.setAttribute('role', 'alert');
+    div.style.color = 'var(--spfx-ui-color-destructive, inherit)';
     div.style.padding = '16px';
     div.textContent = toMessage(e, '365 Account Management failed to load.');
-    while (this.domElement.firstChild) {
-      this.domElement.removeChild(this.domElement.firstChild);
+    while (target.firstChild) {
+      target.removeChild(target.firstChild);
     }
-    this.domElement.appendChild(div);
+    target.appendChild(div);
   }
 
   private _registerDiagnostics(): void {

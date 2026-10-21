@@ -1,37 +1,30 @@
 .accountManagement {
-  color: "[theme:bodyText, default: #323130]";
-  color: var(--bodyText, #323130);
+  color: var(--spfx-ui-color-foreground);
   max-width: 1220px;
   padding: 8px 4px 32px;
 }
 
-.diagnosticBadge {
-  color: #605e5c;
-  font-size: 11px;
-  line-height: 1.4;
-  margin-bottom: 12px;
-}
 
 .helpLine {
-  color: #605e5c;
+  color: var(--spfx-ui-color-muted-foreground);
   font-size: 13px;
   margin: 8px 0 0;
 }
 
 .header {
-  margin-bottom: 38px;
+  margin-bottom: 24px;
   max-width: 720px;
 
   h2 {
-    font-size: 32px;
-    font-weight: 650;
+    font-size: 24px;
+    font-weight: 600;
     letter-spacing: 0;
     line-height: 1.2;
-    margin: 0 0 18px;
+    margin: 0 0 8px;
   }
 
   p {
-    color: #605e5c;
+    color: var(--spfx-ui-color-muted-foreground);
     font-size: 16px;
     line-height: 1.5;
     margin: 0;
@@ -57,8 +50,8 @@
 }
 
 .groupCard {
-  background: #fafafa;
-  border: 1px solid #f4f4f4;
+  background: var(--spfx-ui-color-card);
+  border: 1px solid var(--spfx-ui-color-border);
   border-radius: 8px;
   min-width: 0;
   overflow: hidden;
@@ -79,12 +72,12 @@
   width: 100%;
 
   &:hover {
-    background: #f5f5f5;
+    background: var(--spfx-ui-color-accent);
   }
 
   &:focus-visible {
-    background: #f5f5f5;
-    outline: 2px solid #2564cf;
+    background: var(--spfx-ui-color-accent);
+    outline: 2px solid var(--spfx-ui-color-ring);
     outline-offset: -2px;
   }
 }
@@ -107,12 +100,13 @@
 }
 
 .groupInitials {
+  background: var(--spfx-ui-color-primary);
   align-items: center;
   border-radius: 6px;
-  color: #fff;
+  color: var(--spfx-ui-color-primary-foreground);
   display: inline-flex;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   height: 30px;
   justify-content: center;
   width: 30px;
@@ -130,7 +124,7 @@
 }
 
 .groupMeta {
-  color: #605e5c;
+  color: var(--spfx-ui-color-muted-foreground);
   display: block;
   font-size: 14px;
   line-height: 1.4;
@@ -139,19 +133,19 @@
 }
 
 .chevron {
-  color: #323130;
+  color: var(--spfx-ui-color-foreground);
   justify-self: end;
 }
 
 .groupBody {
-  border-top: 1px solid #efefef;
+  border-top: 1px solid var(--spfx-ui-color-border);
   display: grid;
   gap: 18px;
   padding: 22px 24px 24px;
 }
 
 .metaRow {
-  color: #605e5c;
+  color: var(--spfx-ui-color-muted-foreground);
   display: flex;
   flex-wrap: wrap;
   font-size: 13px;
@@ -160,7 +154,7 @@
 
 .processing {
   align-items: center;
-  color: #605e5c;
+  color: var(--spfx-ui-color-muted-foreground);
   display: flex;
   gap: 10px;
   min-height: 28px;
@@ -185,38 +179,8 @@
   margin-top: 4px;
 }
 
-.tabStrip {
-  border-bottom: 1px solid #e3e7ec;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-bottom: 10px;
-}
 
-.tab {
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: #605e5c;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 8px 12px;
 
-  &:hover {
-    color: #12335c;
-  }
-
-  &:focus-visible {
-    outline: 2px solid #2564cf;
-    outline-offset: -2px;
-  }
-}
-
-.tabActive {
-  border-bottom-color: #2564cf;
-  color: #0b4a8f;
-}
 
 .tabPanel {
   // The active tab's label already names the panel, so drop the inner heading.
@@ -234,14 +198,14 @@
 }
 
 .setupList {
-  background: #fff;
-  border: 1px solid #f0f0f0;
+  background: var(--spfx-ui-color-card);
+  border: 1px solid var(--spfx-ui-color-border);
   border-radius: 8px;
   padding: 12px 14px;
 
   h3 {
     font-size: 15px;
-    font-weight: 650;
+    font-weight: 600;
     margin: 0 0 4px;
   }
 }
@@ -254,15 +218,15 @@
 
   th,
   td {
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--spfx-ui-color-border);
     padding: 6px 8px;
     text-align: left;
     vertical-align: top;
   }
 
   th {
-    color: #605e5c;
-    font-weight: 650;
+    color: var(--spfx-ui-color-muted-foreground);
+    font-weight: 600;
   }
 }
 
@@ -291,8 +255,8 @@
 
 .personRow {
   align-items: center;
-  background: #fff;
-  border: 1px solid #f0f0f0;
+  background: var(--spfx-ui-color-card);
+  border: 1px solid var(--spfx-ui-color-border);
   border-radius: 8px;
   display: grid;
   gap: 12px;
@@ -304,7 +268,7 @@
   width: 100%;
 
   span span {
-    color: #605e5c;
+    color: var(--spfx-ui-color-muted-foreground);
     display: block;
     font-size: 13px;
     margin-top: 2px;
@@ -312,25 +276,25 @@
   }
 
   &:hover {
-    border-color: #d2e3ff;
+    border-color: var(--spfx-ui-color-ring);
   }
 
   &:focus-visible {
-    border-color: #d2e3ff;
-    outline: 2px solid #2564cf;
+    border-color: var(--spfx-ui-color-ring);
+    outline: 2px solid var(--spfx-ui-color-ring);
     outline-offset: 1px;
   }
 }
 
 .personRowSelected {
-  background: #f5f9ff;
-  border-color: #8ab4f8;
+  background: var(--spfx-ui-color-accent);
+  border-color: var(--spfx-ui-color-ring);
 }
 
 .memberRow {
   align-items: center;
-  background: #fff;
-  border: 1px solid #f0f0f0;
+  background: var(--spfx-ui-color-card);
+  border: 1px solid var(--spfx-ui-color-border);
   border-radius: 8px;
   display: flex;
   gap: 12px;
@@ -356,7 +320,7 @@
 
   h3 {
     font-size: 16px;
-    font-weight: 650;
+    font-weight: 600;
     margin: 0;
   }
 }
@@ -373,31 +337,9 @@
   min-width: 0;
 }
 
-.statusPill {
-  align-items: center;
-  border-radius: 10px;
-  display: inline-flex;
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 650;
-  gap: 4px;
-  padding: 2px 8px;
-}
 
-.statusCompleted {
-  background: #dff6dd;
-  color: #0b6a0b;
-}
 
-.statusFailed {
-  background: #fde7e9;
-  color: #a4262c;
-}
 
-.statusPending {
-  background: #fff4ce;
-  color: #6b5900;
-}
 
 .membersHeader,
 .selectedUser {
@@ -424,19 +366,19 @@
 
   h3 {
     font-size: 16px;
-    font-weight: 650;
+    font-weight: 600;
     margin: 0;
   }
 }
 
 .avatar {
   align-items: center;
-  background: #f1f1f1;
+  background: var(--spfx-ui-color-muted);
   border-radius: 50%;
-  color: #323130;
+  color: var(--spfx-ui-color-foreground);
   display: inline-flex;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   height: 34px;
   justify-content: center;
   width: 34px;
@@ -457,26 +399,26 @@
   }
 
   span {
-    color: #605e5c;
+    color: var(--spfx-ui-color-muted-foreground);
     font-size: 13px;
     margin-top: 2px;
   }
 }
 
 .emptyText {
-  color: #605e5c;
+  color: var(--spfx-ui-color-muted-foreground);
   margin: 0;
 }
 
 .statsRow {
-  color: #605e5c;
+  color: var(--spfx-ui-color-muted-foreground);
   display: flex;
   flex-wrap: wrap;
   font-size: 13px;
   gap: 6px 16px;
 
   strong {
-    color: #323130;
+    color: var(--spfx-ui-color-foreground);
   }
 }
 
@@ -494,12 +436,12 @@
 
   h3 {
     font-size: 16px;
-    font-weight: 650;
+    font-weight: 600;
     margin: 0;
   }
 
   &:focus-visible {
-    outline: 1px solid #8ab4f8;
+    outline: 1px solid var(--spfx-ui-color-ring);
     outline-offset: 2px;
   }
 }
@@ -529,14 +471,14 @@
 }
 
 .sitePermLevel {
-  color: #605e5c;
+  color: var(--spfx-ui-color-muted-foreground);
   flex: 0 0 auto;
   font-size: 13px;
 }
 
 .confirmBox {
-  background: #fff8e8;
-  border: 1px solid #f1e2b0;
+  background: var(--spfx-ui-color-muted);
+  border: 1px solid var(--spfx-ui-color-border);
   border-radius: 6px;
   display: grid;
   gap: 10px;
@@ -551,11 +493,11 @@
   justify-content: center;
   padding: 16px;
   position: fixed;
-  z-index: 1000000;
+  z-index: 1;
 }
 
 .modalPanel {
-  background: #fff;
+  background: var(--spfx-ui-color-card);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   display: grid;
@@ -569,24 +511,6 @@
   }
 }
 
-// Destructive (red) button — Fluent v9 has no "danger" appearance, so override the primary fill.
-.dangerButton {
-  background-color: #c50f1f !important;
-  border-color: #c50f1f !important;
-  color: #ffffff !important;
-
-  &:hover {
-    background-color: #a4262c !important;
-    border-color: #a4262c !important;
-    color: #ffffff !important;
-  }
-
-  &:active {
-    background-color: #8a0b14 !important;
-    border-color: #8a0b14 !important;
-    color: #ffffff !important;
-  }
-}
 
 .confirmText {
   align-items: flex-start;
@@ -596,7 +520,7 @@
 }
 
 .confirmIcon {
-  color: #b88600;
+  color: var(--spfx-ui-color-foreground);
   flex: 0 0 auto;
   margin-top: 1px;
 }
@@ -620,7 +544,7 @@
   }
 
   .header h2 {
-    font-size: 28px;
+    font-size: 24px;
   }
 
   .groupHeader {
@@ -640,4 +564,14 @@
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.shell { color: var(--spfx-ui-color-foreground); background: var(--spfx-ui-color-background); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; container-type: inline-size; }
+.viewNavigation { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 4px; border-bottom: 1px solid var(--spfx-ui-color-border); }
+.toolbar { flex-wrap: wrap; }
+.modalPanel { color: var(--spfx-ui-color-foreground); max-height: calc(100vh - 32px); overflow-y: auto; font-family: var(--font-sans); }
+@container (max-width: 520px) {
+  .groupHeader, .groupBody { padding: 16px; }
+  .memberRow { flex-wrap: wrap; }
+  .selectedUser { align-items: flex-start; flex-direction: column; }
 }

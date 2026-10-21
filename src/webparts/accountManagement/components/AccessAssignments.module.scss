@@ -1,0 +1,28 @@
+.overview { display: grid; gap: 20px; padding: 24px 4px; }
+.heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.heading h2 { font-size: 24px; line-height: 32px; font-weight: 600; margin: 0 0 8px; }
+.heading p { margin: 0; max-width: 70ch; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.toolbar > input { flex: 1 1 240px; max-width: 420px; }
+.note, .secondary { color: var(--spfx-ui-color-muted-foreground); font-size: 12px; line-height: 18px; }
+.note { margin: 0; max-width: 75ch; }
+.secondary { display: block; overflow-wrap: anywhere; }
+.tableWrap { overflow-x: auto; }
+.table { border-collapse: collapse; width: 100%; text-align: left; font-size: 14px; }
+.table caption { text-align: left; padding-bottom: 12px; font-variant-numeric: tabular-nums; }
+.table th, .table td { padding: 12px; vertical-align: top; border-bottom: 1px solid var(--spfx-ui-color-border); }
+.table th { background: var(--spfx-ui-color-muted); font-weight: 600; }
+.table th:first-child, .table td:first-child { padding-left: 0; }
+.table ul, .unassigned ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.table td { min-width: 150px; overflow-wrap: anywhere; }
+.unassigned h3 { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+.mobileLabel { display: none; }
+@container (max-width: 600px) {
+  .table, .table tbody, .table tr, .table td { display: block; }
+  .table caption { display: block; width: 100%; }
+  .table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .table tr { border-bottom: 1px solid var(--spfx-ui-color-border); padding: 16px 0; }
+  .table td { border: 0; padding: 0; min-width: 0; }
+  .table td + td { margin-top: 12px; }
+  .mobileLabel { display: block; font-weight: 600; margin-bottom: 8px; }
+}

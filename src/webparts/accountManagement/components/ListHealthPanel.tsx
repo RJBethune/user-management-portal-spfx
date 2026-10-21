@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { MessageBar, MessageBarBody, MessageBarTitle } from '@fluentui/react-components';
+import { MessageBar, MessageBarBody, MessageBarTitle } from '../../../ui/Controls';
 
 import { EXPECTED_LISTS, IColumnIssue, IExpectedColumn, IExpectedList, IListHealth } from '../models/listSchema';
 import styles from './AccountManagement.module.scss';
