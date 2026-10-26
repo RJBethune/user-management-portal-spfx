@@ -579,6 +579,30 @@
 }
 
 .shell { color: var(--spfx-ui-color-foreground); background: var(--spfx-ui-color-background); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; container-type: inline-size; }
+// The pinned Kit supplies the header and controls. Only the expanded banner's
+// surface roles change; portaled menus retain the normal Kit theme.
+.shell .expandedHeader {
+  background: var(--spfx-ui-color-primary);
+  color: var(--spfx-ui-color-primary-foreground);
+  border-bottom-color: var(--spfx-ui-color-primary);
+
+  :global(button.cn-button-variant-ghost) { color: inherit; }
+  :global(button.cn-button-variant-ghost):is(:hover, :active, [aria-expanded='true'], [data-popup-open]) {
+    background: var(--spfx-ui-color-muted);
+    color: var(--spfx-ui-color-foreground);
+  }
+  :global(button.cn-button-variant-ghost):focus-visible {
+    outline: 2px solid var(--spfx-ui-color-primary-foreground);
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+}
+@media (forced-colors: active) {
+  .shell .expandedHeader {
+    background: Canvas; color: CanvasText; border-bottom-color: CanvasText;
+    :global(button.cn-button-variant-ghost):focus-visible { outline-color: Highlight; }
+  }
+}
 .expandedFrame {
   position: fixed; inset: 0; z-index: 2147483000; overflow: auto; overscroll-behavior: contain;
   height: 100vh; height: 100dvh;

@@ -43,7 +43,7 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
     try { localStorage.setItem(preferenceKey, next); } catch { /* The theme still works when storage is unavailable. */ }
   };
   return <div className={styles.shell}>
-    <AppHeader role="region" aria-label="Account Management header" brand={{ name: props.description || '365 Account Management', mark: <PeopleTeam20Regular aria-hidden="true" /> }} user={{ name: props.userDisplayName }} actions={<>
+    <AppHeader className={workspace.expanded ? styles.expandedHeader : undefined} role="region" aria-label="Account Management header" brand={{ name: props.description || '365 Account Management', mark: <PeopleTeam20Regular aria-hidden="true" /> }} user={{ name: props.userDisplayName }} actions={<>
       <AppHeaderExpandButton expanded={workspace.expanded} onExpandedChange={workspace.toggle} aria-disabled={workspace.pending || undefined} data-workspace-toggle="true" />
       {workspace.expanded && <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Workspace actions" title="Workspace actions" />}><MoreHorizontal20Regular aria-hidden="true" /></DropdownMenuTrigger>
         <DropdownMenuContent id={workspaceMenuId} align="end"><DropdownMenuItem disabled={workspace.pending || workspace.native} onClick={workspace.enterBrowser}>Enter browser full screen</DropdownMenuItem></DropdownMenuContent>

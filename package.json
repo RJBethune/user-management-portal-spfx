@@ -1,6 +1,6 @@
 {
   "name": "account-management-spfx",
-  "version": "1.16.0",
+  "version": "1.16.1",
   "private": true,
   "description": "Account Management for Microsoft 365 and SharePoint groups through configured requests and authorized site APIs.",
   "engines": {

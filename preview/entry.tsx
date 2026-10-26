@@ -107,7 +107,7 @@ const context = {
 function mount(instanceId: string, mountPoint: HTMLElement) {
   const host = createSpfxUiHost({ mountPoint, portalParent: document.body, targetDocument: document, instanceId, style: 'luma', theme: initialTokens });
   host.portalHost.style.position = 'relative'; host.portalHost.style.zIndex = '1000';
-  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.16.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
+  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.16.1" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
   return () => { ReactDOM.unmountComponentAtNode(host.appRoot); host.dispose(); };
 }
 const dispose = mount('preview-account-management', document.getElementById('app')!);
