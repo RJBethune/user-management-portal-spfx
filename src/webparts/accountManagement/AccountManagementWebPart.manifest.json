@@ -34,6 +34,7 @@
         "authorizedAdminsListTitle": "Group Management Authorized Admins",
         "sitePermissionsListTitle": "Group Site Permissions",
         "listSiteUrl": "",
+        "accessAdminGroupName": "365AccessManagement-Admins",
         "visibleOffices": "",
         "pollTimeoutSeconds": 120,
         "startCollapsed": true,

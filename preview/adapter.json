@@ -9,5 +9,5 @@
   "sourceAliases": {
     "@microsoft/sp-page-context": "preview/spfx-stubs.ts"
   },
-  "fixtures": ["populated", "empty", "loading", "error"]
+  "fixtures": ["populated", "empty", "loading", "error", "not-admin"]
 }

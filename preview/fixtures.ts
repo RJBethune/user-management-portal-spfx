@@ -20,7 +20,7 @@ export function install(state: any) {
   }));
   // Only the local Portfolio runner installs these fixtures. Production service permissions remain intact.
   Object.assign(AccessAdministrationService.prototype, {
-    isAvailable: async () => true,
+    isAvailable: async () => state.fixture !== 'not-admin',
     load: async () => {
       if (state.fixture === 'loading') return new Promise(() => {});
       if (state.fixture === 'error') throw Error('Fixture: access assignments could not be loaded.');
@@ -44,7 +44,15 @@ export function install(state: any) {
   const service = AccountManagementService.prototype as any;
   Object.assign(service, {
     getAuthorizedGroups: async () => { if (state.fixture === 'loading') return new Promise(() => {}); if (state.fixture === 'error') throw Error('Fixture: authorized groups could not be loaded.'); return state.fixture === 'empty' ? [] : groups; },
-    checkListHealth: async () => [], getRecentRequests: async () => [], getGroupSitePermissions: async () => [],
+    checkListHealth: async () => [],
+    getRecentRequests: async () => {
+      if (state.fixture === 'loading') return new Promise(() => {});
+      if (state.fixture === 'error') throw Error('Fixture: recent requests could not be loaded.');
+      return state.fixture === 'empty' ? [] : [
+        { id: 52, action: 'Add Member', groupName: groups[0].title, groupId: groups[0].groupId, memberDisplayName: people[2].displayName, status: 'Completed', resultMessage: 'Member added.', requestedOn: '2026-10-26T12:00:00Z' },
+        { id: 51, action: 'Remove Member', groupName: groups[1].title, groupId: groups[1].groupId, memberDisplayName: people[1].displayName, status: 'Failed', resultMessage: 'Workflow denied this change.', requestedOn: '2026-10-26T11:00:00Z' }
+      ];
+    }, getGroupSitePermissions: async () => [],
     createMembershipRequest: blocked, recordCompletedChange: blocked, changeSharePointGroupMembership: blocked, getRequest: blocked, pollRequest: blocked
   });
   Object.assign(GraphService.prototype, {

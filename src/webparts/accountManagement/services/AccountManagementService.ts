@@ -1,4 +1,5 @@
 import { diag } from '../shared/log';
+import { DEFAULT_ACCESS_ADMIN_GROUP } from '../models/accessAssignments';
 import { Guid } from '@microsoft/sp-core-library';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
@@ -34,13 +35,16 @@ export interface IListConfig {
   sitePermissionsListTitle: string;
   /** Optional: absolute URL of the site that holds the four lists. Blank = the current page's site. */
   listSiteUrl?: string;
+  /** SharePoint group on the list site required for access administration. Blank disables the feature. */
+  accessAdminGroupName?: string;
 }
 
 export const DEFAULT_LIST_CONFIG: IListConfig = {
   requestListTitle: 'Group Membership Requests',
   groupListTitle: 'Managed Groups',
   authorizedAdminsListTitle: 'Group Management Authorized Admins',
-  sitePermissionsListTitle: 'Group Site Permissions'
+  sitePermissionsListTitle: 'Group Site Permissions',
+  accessAdminGroupName: DEFAULT_ACCESS_ADMIN_GROUP
 };
 
 export class AccountManagementService {

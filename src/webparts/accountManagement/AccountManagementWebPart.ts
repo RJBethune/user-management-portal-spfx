@@ -32,6 +32,7 @@ export interface IAccountManagementWebPartProps {
   authorizedAdminsListTitle: string;
   sitePermissionsListTitle: string;
   listSiteUrl: string;
+  accessAdminGroupName: string;
   visibleOffices: string;
   pollTimeoutSeconds: number;
   startCollapsed: boolean;
@@ -101,6 +102,7 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
     if (this.properties.showGroupPhotos === undefined) {
       this.properties.showGroupPhotos = true; // default ON; preserves prior behavior for existing instances
     }
+    if (this.properties.accessAdminGroupName === undefined) this.properties.accessAdminGroupName = DEFAULT_LIST_CONFIG.accessAdminGroupName || '';
     this._registerDiagnostics();
     console.info(`365 Account Management web part ${AccountManagementWebPart.buildVersion} loaded`, {
       componentId: this.context.manifest.id,
@@ -120,7 +122,8 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
           this.properties.authorizedAdminsListTitle || DEFAULT_LIST_CONFIG.authorizedAdminsListTitle,
         sitePermissionsListTitle:
           this.properties.sitePermissionsListTitle || DEFAULT_LIST_CONFIG.sitePermissionsListTitle,
-        listSiteUrl: this.properties.listSiteUrl || ''
+        listSiteUrl: this.properties.listSiteUrl || '',
+        accessAdminGroupName: this.properties.accessAdminGroupName
       };
       const seconds: number =
         this.properties.pollTimeoutSeconds && this.properties.pollTimeoutSeconds > 0
@@ -235,6 +238,15 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
                   label: 'Site permissions list title',
                   description:
                     'Optional. Curated list of which SharePoint sites (and permission level) each group is used on.'
+                })
+              ]
+            },
+            {
+              groupName: 'Access administration',
+              groupFields: [
+                PropertyPaneTextField('accessAdminGroupName', {
+                  label: 'SharePoint admin group',
+                  description: 'Only direct members of this group on the list site can open Access assignments. Existing list permissions are also required. Blank disables Access assignments.'
                 })
               ]
             },

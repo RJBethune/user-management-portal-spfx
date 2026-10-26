@@ -17,7 +17,11 @@
     "UI-ACCEPTANCE",
     "ACCESS-01",
     "KIT-01",
-    "GROUPS-01"
+    "GROUPS-01",
+    "ACCESS-02",
+    "WORKSPACE-01",
+    "REQUESTS-01",
+    "ACCESS-03"
   ],
   "attribution": "M/EX - Executive Office",
   "requirePickerTitle": true

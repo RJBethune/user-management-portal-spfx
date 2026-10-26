@@ -35,6 +35,7 @@ const writes: unknown[] = [];
 (window as any).previewWrites = writes;
 let conflictShown = false;
 let resolvedAdmin = members[0];
+(window as any).previewAdminMember = scenario !== 'not-admin';
 const context = {
   pageContext: { web: { absoluteUrl: site }, site: { id: 'preview-site' }, user: { loginName: 'alex@example.test', displayName: 'Alex Morgan' } },
   spHttpClient: {
@@ -42,7 +43,8 @@ const context = {
       const url = decodeURIComponent(raw);
       if (scenario === 'error' && url.includes('User/Title')) return { ok: false, status: 403, json: async () => ({}) };
       let result: unknown = { value: [] };
-      if (url.includes('EffectiveBasePermissions')) result = {
+      if (url.includes('/currentuser/groups')) result = { value: (window as any).previewAdminMember ? [{ Id: 42, Title: '365AccessManagement-Admins' }] : [] };
+      else if (url.includes('EffectiveBasePermissions')) result = {
         Id: 'admins', ListItemEntityTypeFullName: 'SP.Data.AdminsListItem', EffectiveBasePermissions: { Low: scenario === 'denied' ? '4' : scenario === 'noadd' || (scenario === 'inventory-change' && writes.length > 0) ? '2052' : '2054', High: '0' },
         DefaultViewUrl: '/sites/access/Lists/Admins/AllItems.aspx', DefaultEditFormUrl: '/sites/access/Lists/Admins/EditForm.aspx', DefaultNewFormUrl: '/sites/access/Lists/Admins/NewForm.aspx'
       };
@@ -54,6 +56,13 @@ const context = {
         result = { value: spec?.columns.map(column => ({ InternalName: column.name, TypeAsString: column.types[0] })) || [] };
       }
       else if (url.includes('/currentuser')) result = { Id: 10, Title: 'Alex Morgan', Email: 'alex@example.test' };
+      else if (url.includes("getbytitle('Group Membership Requests')/items")) {
+        if (scenario === 'requests-error') return { ok: false, status: 403, json: async () => ({}) };
+        result = { value: scenario === 'requests' ? [
+          { Id: 52, Action: 'Add Member', GroupName: 'Operations team', GroupId: groups[0].GroupId, MemberDisplayName: 'Taylor Chen', Status: 'Completed', ResultMessage: 'Member added.', RequestedOn: '2026-10-26T12:00:00Z' },
+          { Id: 51, Action: 'Remove Member', GroupName: 'Regional coordination', GroupId: groups[1].GroupId, MemberDisplayName: 'Jordan Patel', Status: 'Failed', ResultMessage: 'Workflow denied this change.' }
+        ] : [] };
+      }
       else if (url.includes("getbytitle('Managed Groups')")) result = url.endsWith('?$select=Id') ? { Id: 'managed-groups' } : { value: url.includes('$filter=') ? groups.filter(row => assignments[0].OfficeGroupRecord.some(group => group.Id === row.Id)) : groups };
       else if (url.includes("getbytitle('Group Management Authorized Admins')")) {
         const match = url.match(/\/items\((\d+)\)/);
@@ -97,7 +106,7 @@ const context = {
 function mount(instanceId: string, mountPoint: HTMLElement) {
   const host = createSpfxUiHost({ mountPoint, portalParent: document.body, targetDocument: document, instanceId, style: 'luma', theme: initialTokens });
   host.portalHost.style.position = 'relative'; host.portalHost.style.zIndex = '1000';
-  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.15.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
+  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.16.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
   return () => { ReactDOM.unmountComponentAtNode(host.appRoot); host.dispose(); };
 }
 const dispose = mount('preview-account-management', document.getElementById('app')!);

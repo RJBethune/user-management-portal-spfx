@@ -2,7 +2,15 @@
 
 Use **Access assignments** to see which groups each admin can manage, search by admin or group, and edit assignments directly in the app. Membership administration remains on the **Membership** view.
 
-The view is available to users with **Manage Lists** and **Edit Items** on the configured `Group Management Authorized Admins` list. Adding a record also requires **Add Items**. Being assigned to manage a Microsoft 365 group does not grant these list permissions. Page edit mode does not grant access to the view. SharePoint still enforces item-level permissions on each save, including records with unique permissions.
+The view requires direct membership in the SharePoint group **365AccessManagement-Admins**, plus **Manage Lists** and **Edit Items** on the configured `Group Management Authorized Admins` list. Adding a record also requires **Add Items**. Being assigned to manage a Microsoft 365 group does not grant these permissions. Page edit mode and site-owner status do not bypass the group check. SharePoint still enforces item-level permissions on each save, including records with unique permissions.
+
+## Configure the administration group
+
+In the web-part settings, use **Access administration → SharePoint admin group** to change the group name. Existing and new web parts default to `365AccessManagement-Admins`. The group must already exist in the site collection hosting the configured lists; the app does not create it, add members or grant permissions. Blank configuration disables Access assignments.
+
+The service checks the signed-in user's [SharePoint group collection](https://learn.microsoft.com/en-us/previous-versions/office/developer/sharepoint-rest-reference/dn531432(v=office.15)#user-properties) on the list site before loading assignments, opening editors, searching for admins and saving. Use direct user membership; nested Entra/security-group membership is not expanded by this gate. A missing group, nonmember, unreadable response or request failure denies access. Removing a member prevents their next save while retaining the draft and displaying the denial.
+
+This is an application gate, not a replacement for SharePoint authorization. Users with independent list-edit permissions can still use SharePoint directly. Restrict the list's permissions separately when the same group must also control direct-list edits. This release does not change existing list permissions or workflows.
 
 ## Assign or remove access
 

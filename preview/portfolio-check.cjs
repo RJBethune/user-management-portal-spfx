@@ -29,6 +29,12 @@ async function main() {
     });
     await page.goto(url.href, { waitUntil: 'networkidle', timeout: 60000 });
     await expect(page.getByRole('heading', { name: 'Groups you manage', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Expand workspace', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Expanded Account Management workspace' })).toBeVisible();
+    await page.getByRole('button', { name: 'Recent requests', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Recent requests', exact: true })).toBeVisible();
+    await expect(page.getByText('Member added.', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Restore workspace', exact: true }).click();
     await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
     await page.getByRole('button', { name: 'Edit assignment 1 for Alex Morgan' }).click();
     await expect(page.getByRole('heading', { name: 'Edit groups for Alex Morgan' })).toBeVisible();
@@ -52,7 +58,7 @@ async function main() {
     await expect(page.locator('vite-error-overlay')).toHaveCount(0);
     assert.deepEqual(errors, [], 'No browser runtime errors.');
     assert.deepEqual(externalRequests, [], 'Local fixtures must never contact live services.');
-    console.log('Portfolio preview passed: full WebPart loads; existing/new assignment drafts work; saves stay blocked; no runtime errors or external requests.');
+    console.log('Portfolio preview passed: full WebPart, expansion, Recent requests and existing/new assignment drafts work; saves stay blocked; no runtime errors or external requests.');
   } finally {
     await browser.close();
   }

@@ -1,3 +1,5 @@
+export const DEFAULT_ACCESS_ADMIN_GROUP = '365AccessManagement-Admins';
+
 export interface IManagedGroupReference {
   id: number;
   title: string;

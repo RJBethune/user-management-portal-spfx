@@ -154,6 +154,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   const [health, setHealth] = React.useState<IListHealth[] | undefined>(undefined);
   const [cards, setCards] = React.useState<{ [id: number]: ICardState }>({});
   const [recent, setRecent] = React.useState<IRequestSummary[]>([]);
+  const [recentLoading, setRecentLoading] = React.useState(false);
+  const [recentError, setRecentError] = React.useState('');
+  const recentRequest = React.useRef(0);
   const [printing, setPrinting] = React.useState<boolean>(false);
   const [printNote, setPrintNote] = React.useState<string | undefined>(undefined);
   const [groupPhotos, setGroupPhotos] = React.useState<{ [id: number]: string }>({});
@@ -231,8 +234,12 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
   }, []);
 
   const loadRecent = async (): Promise<void> => {
+    const request = ++recentRequest.current;
+    const source = spService.current;
+    setRecentLoading(true); setRecentError('');
     try {
-      const rows: IRequestSummary[] = await spService.current.getRecentRequests(25);
+      const rows: IRequestSummary[] = await source.getRecentRequests(25);
+      if (request !== recentRequest.current || source !== spService.current) return;
       setRecent(rows);
       // Drop any "submitted / tracking" banner whose request has reached a terminal state — even if the
       // background poll already gave up on a slow flow — so the banner never lingers after completion.
@@ -258,8 +265,10 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
         });
         return changed ? next : prev;
       });
-    } catch {
-      /* recent history is best-effort */
+    } catch (reason) {
+      if (request === recentRequest.current && source === spService.current) setRecentError(friendlyError(reason));
+    } finally {
+      if (request === recentRequest.current && source === spService.current) setRecentLoading(false);
     }
   };
 
@@ -273,6 +282,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     setLoading(true);
     setTopError(undefined);
     setCards({});
+    setRecent([]); setRecentError('');
     setBrowsingGroups(false);
     (async (): Promise<void> => {
       try {
@@ -304,6 +314,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
     });
     return () => {
       cancelled = true;
+      recentRequest.current++;
     };
   }, [listConfigKey, props.visibleOffices]);
 
@@ -1048,8 +1059,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                         {(() => {
                           const showOwners: boolean = !isSharePointGroup(group.groupId) && manage.manageable && !!(card.owners || card.ownersLoading || card.ownersError);
                           const showSites: boolean = !!(card.sitePerms && card.sitePerms.length);
-                          const showRecent: boolean = recentForGroup.length > 0;
-                          const keys: string[] = ['members', showOwners ? 'owners' : '', showSites ? 'sites' : '', showRecent ? 'recent' : ''].filter((k: string) => !!k);
+                          const keys: string[] = ['members', showOwners ? 'owners' : '', showSites ? 'sites' : '', 'recent'].filter((k: string) => !!k);
                           const active: string = keys.indexOf(card.activeTab || '') !== -1 ? (card.activeTab as string) : 'members';
                           return (
                             <Tabs value={active} onValueChange={(value) => updateCard(group.id, { activeTab: String(value) })}>
@@ -1067,11 +1077,9 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                     Used On{card.sitePerms ? ` (${card.sitePerms.length})` : ''}
                                   </TabsTrigger>
                                 )}
-                                {showRecent && (
                                   <TabsTrigger id={host.idFor(`group-${group.id}-recent-tab`)} value="recent">
                                     Recent Requests ({recentForGroup.length})
                                   </TabsTrigger>
-                                )}
                               </TabsList>
                               <div className={styles.tabPanel} >
                                 <TabsContent id={host.idFor(`group-${group.id}-members-panel`)} value="members" keepMounted>
@@ -1222,6 +1230,10 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 </TabsContent>
                                 <TabsContent id={host.idFor(`group-${group.id}-recent-panel`)} value="recent" keepMounted>
                               <div className={styles.recentScroll}>
+                                <Button disabled={recentLoading} onClick={() => { loadRecent().catch(() => undefined); }}>Refresh group requests</Button>
+                                {recentLoading && <Spinner label="Loading group requests…" />}
+                                {recentError && <MessageBar intent="error"><MessageBarBody>{recentError}</MessageBarBody></MessageBar>}
+                                {!recentLoading && !recentError && !recentForGroup.length && <p>No recent requests for this group.</p>}
                                 <div className={styles.recentList}>
                                   {recentForGroup.map((r: IRequestSummary) => {
                                     const edited: string = formatDateTime(r.modified);

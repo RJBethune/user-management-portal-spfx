@@ -1,6 +1,6 @@
 # Baseline and shared UI
 
-Account Management 1.15.0 uses published delivery toolkit **1.5.3**, SPFx **1.23.2**, Heft **1.2.19**, TypeScript **~5.8.0**, React **17.0.1**, and Node **22.23.3**. Both channels retain the original PROD identities and product names. See [package identity and filenames](PACKAGE-IDENTITY.md).
+Account Management 1.16.0 uses published delivery toolkit **1.5.3**, SPFx **1.23.2**, Heft **1.2.19**, TypeScript **~5.8.0**, React **17.0.1**, and Node **22.23.3**. Both channels retain the original PROD identities and product names. See [package identity and filenames](PACKAGE-IDENTITY.md).
 
 The toolkit archive is unchanged: SHA-256 `3390fa4ec29fec6473fd0ff6c2e4ef23bc3f02db35c14558cae328cc6de2582b`. The platform checkout's newer baseline guidance is unreleased; it does not replace this immutable archive. The app adopts its Node 22.23.3 minimum in the engine, local version file and CI.
 
@@ -27,5 +27,7 @@ Use Node 22.23.3, `npm ci`, and `npm run check`. For UI changes, run `npm run pr
 For another upgrade, review released contracts and migration notes, back up dirty or untracked work, create an app branch, and vendor exact archives and hashes. Refresh the lock deliberately. Preserve PROD IDs, Graph scopes, list and property names, configured flows and earlier releases. Do not use `npm audit fix` as an implicit upgrade.
 
 Local tests do not prove tenant acceptance. Validate focus, dialog cancellation, live themes, remount, adjacent web parts, inline assignment saves and existing Power Automate writes in authenticated SharePoint. See [known issues](KNOWN-ISSUES.md).
+
+Version 1.16.0 retains this Kit cohort and adds its published `AppHeaderExpandButton`. Validation covers 17 service regressions, 29 browser cases, and the actual Portfolio Vite preview. New coverage includes the SharePoint group gate, revoked membership, fullscreen portals and cleanup, narrow and adjacent instances, browser-fullscreen success/failure, and Recent requests outcomes and empty/error states. The setting defaults to `365AccessManagement-Admins`; no tenant permissions are provisioned or changed.
 
 Local validation for 1.15.0 uses Node 22.23.3: a fresh `npm ci`, `npm run check` with 14 regression tests, and 22 Chromium browser tests. Coverage includes current-user permission gates, conditional writes, conflicts, failed saves, field compatibility, directory selection, keyboard behavior, draft retention and desktop/mobile layouts. Both workspaces are checked in narrow containers inside a wide browser. Access coverage includes separate drafts for duplicate records, new-assignment drafts, unique field IDs, save locking, filtering, and drafts remaining reachable after a concurrent deletion or permission change. Group navigation covers long names and `startCollapsed`. The published baseline audit reports one nonblocking advisory because its recorded Node minimum is 22.14.0 and this app now requires 22.23.3. Tenant acceptance is pending.

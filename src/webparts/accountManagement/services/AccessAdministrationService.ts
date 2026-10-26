@@ -4,7 +4,7 @@ import { SPPermission } from '@microsoft/sp-page-context';
 import { IListConfig } from './AccountManagementService';
 import { GraphService } from './GraphService';
 import { IUser } from '../models/types';
-import { IAccessAssignment, IAccessOverview, IAssignmentEditor, IManagedGroupReference, lookupIds, summarizeAssignments } from '../models/accessAssignments';
+import { DEFAULT_ACCESS_ADMIN_GROUP, IAccessAssignment, IAccessOverview, IAssignmentEditor, IManagedGroupReference, lookupIds, summarizeAssignments } from '../models/accessAssignments';
 
 interface IListMetadata {
   Id: string;
@@ -69,7 +69,21 @@ export class AccessAdministrationService {
   }
 
   public async isAvailable(): Promise<boolean> {
-    try { return this.canManage(await this.metadata()); } catch { return false; }
+    try { await this.requireAdminGroup(); return this.canManage(await this.metadata()); } catch { return false; }
+  }
+
+  private async requireAdminGroup(): Promise<void> {
+    const name = (this.config.accessAdminGroupName === undefined ? DEFAULT_ACCESS_ADMIN_GROUP : this.config.accessAdminGroupName).trim();
+    if (!name) throw new AssignmentSaveError('Access assignments is disabled until a SharePoint admin group is configured.', 'denied');
+    // Check the signed-in user's direct SharePoint group membership on the list site, never the page's site.
+    // Do not cache this decision: a removed member must not save through an already-open editor.
+    const filter = encodeURIComponent(`Title eq '${name.replace(/'/g, "''")}'`);
+    let groups: { Id: number; Title: string }[];
+    try { groups = await this.all(`${this.webUrl}/_api/web/currentuser/groups?$select=Id,Title&$filter=${filter}`); }
+    catch { throw new AssignmentSaveError('Your access administration group membership could not be verified. Try again or contact a site owner.', 'denied'); }
+    if (!groups.some(group => Number.isSafeInteger(group.Id) && group.Id > 0 && typeof group.Title === 'string' && group.Title.toLowerCase() === name.toLowerCase())) {
+      throw new AssignmentSaveError(`Access assignments requires membership in the SharePoint group ${name}. Your draft has not been saved.`, 'denied');
+    }
   }
 
   private async all<T>(url: string): Promise<T[]> {
@@ -103,6 +117,7 @@ export class AccessAdministrationService {
 
   private async editorSchema(creating: boolean): Promise<IEditorSchema> {
     // Recheck on each open and save. A cached UI gate never authorizes a write.
+    await this.requireAdminGroup();
     const metadata = await this.metadata();
     if (!this.canManage(metadata) || (creating && !this.hasPermission(metadata, SPPermission.addListItems))) {
       throw new AssignmentSaveError(`Your permissions no longer allow ${creating ? 'adding' : 'editing'} assignments. Ask a list owner to review your access.`, 'denied');
@@ -123,6 +138,8 @@ export class AccessAdministrationService {
   }
 
   public async searchAdmins(query: string): Promise<IUser[]> {
+    await this.requireAdminGroup();
+    if (!this.canManage(await this.metadata())) throw new AssignmentSaveError('Your list permissions no longer allow access administration.', 'denied');
     const users = await new GraphService(this.context).searchUsers(query);
     return users.filter((user) => !user.isGroup && !!user.userPrincipalName);
   }
@@ -202,6 +219,7 @@ export class AccessAdministrationService {
   }
 
   public async load(): Promise<IAccessOverview> {
+    await this.requireAdminGroup();
     const metadata = await this.metadata();
     if (!this.canManage(metadata)) throw new Error('Managing access assignments requires Manage Lists and Edit Items on the Authorized Admins list.');
     const [rawAssignments, groups] = await Promise.all([

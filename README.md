@@ -1,12 +1,16 @@
 # Account Management
 
-Version 1.15.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
+Version 1.16.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
 
 The app uses the shared UX Kit with SharePoint, Light and Dark themes. Its **Access assignments** view helps trusted list administrators review who manages each group, find duplicate assignments and groups without an admin, and add or edit assignments directly in the app.
 
 **Access assignments** places admins on the left and editable group assignments on the right. Switching admins preserves each record's draft, including a new assignment. Narrow columns use **Back to admins**. The Kit header uses the same icon and theme-menu treatment as Better apps.
 
 **Groups you manage** uses an Outlook-style group list and details pane. Search or choose a group on the left; manage its members and owners on the right. Narrow web parts switch between the list and details with **Back to groups**. Changing groups preserves drafts and the selected tab.
+
+The shared header includes **Expand workspace** and **Restore workspace**. Expansion fills the page while retaining drafts, theme menus and confirmation dialogs. Escape closes an open menu or dialog first, then restores the workspace. **Workspace actions → Enter browser full screen** is available after expansion; a host that blocks browser fullscreen still supports page expansion.
+
+**Recent requests** shows the signed-in user's latest 25 membership requests across groups, with outcomes, refresh, loading, empty and error states. Each group's **Recent Requests** tab remains available even when there is no history.
 
 ## Build and deliver
 
@@ -43,7 +47,7 @@ A Microsoft 365 group GUID routes changes through the existing SharePoint reques
 
 An integer SharePoint group ID routes changes through SharePoint REST in the signed-in user's context. The Authorized Admins list controls which groups the UI shows; SharePoint permissions enforce the actual change.
 
-An individual admin can have several groups assigned through `OfficeGroupRecord`. The page's `visibleOffices` setting only narrows what that admin sees. Access administration requires Manage Lists and Edit Items on the Authorized Admins list, plus Add Items for new records. SharePoint enforces list and item permissions on every save. Concurrent changes require an explicit reload; the app never overwrites a newer assignment silently.
+An individual admin can have several groups assigned through `OfficeGroupRecord`. The page's `visibleOffices` setting only narrows what that admin sees. Access administration requires direct membership in the configured SharePoint group (default `365AccessManagement-Admins`) on the list site, plus Manage Lists and Edit Items on the Authorized Admins list. New records also require Add Items. Membership is rechecked before administration reads and saves. SharePoint enforces list and item permissions on every save. Concurrent changes require an explicit reload; the app never overwrites a newer assignment silently.
 
 ## Configuration
 

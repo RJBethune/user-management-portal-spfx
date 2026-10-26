@@ -51,12 +51,12 @@ const { AccessAdministrationService } = load('src/webparts/accountManagement/ser
 });
 const site = 'https://example.sharepoint.com/sites/access';
 const config = { authorizedAdminsListTitle: "Admin's assignments", groupListTitle: 'Managed Groups' };
-function administration(handler, post = async () => { throw new Error('Unexpected write'); }, listConfig = config) {
+function administration(handler, post = async () => { throw new Error('Unexpected write'); }, listConfig = config, membership = () => ({ value: [{ Id: 42, Title: '365AccessManagement-Admins' }] })) {
   const calls = [];
   const service = new AccessAdministrationService({
     pageContext: { web: { absoluteUrl: site } },
     spHttpClient: {
-      get: async url => { calls.push(url); return { ok: true, headers: { get: () => '"3"' }, json: async () => handler(url) }; },
+      get: async url => { calls.push(url); return { ok: true, headers: { get: () => '"3"' }, json: async () => url.includes('/currentuser/groups') ? membership(url) : handler(url) }; },
       post: async (url, _configuration, options) => { calls.push(url); return post(url, options); }
     }
   }, listConfig);
@@ -96,6 +96,44 @@ test('assignment overview reads all pages, preserves duplicates, and targets the
 const groupRows = [{ Id: 1, Title: 'Operations', GroupId: 'group-1' }, { Id: 2, Title: 'Coordination', GroupId: 'group-2' }];
 const editor = { id: 7, etag: '"3"', userId: 10, userName: 'Admin', userEmail: 'admin@example.test', groupIds: [1], groups: [], multiple: true, required: false };
 const newAdmin = { id: 'entra-guid', displayName: 'New admin', userPrincipalName: 'new@example.test' };
+
+test('the SharePoint group gate denies every access operation before reading assignments or writing', async () => {
+  for (const membership of [() => ({ value: [] }), () => ({ value: [{ Id: 7, Title: 'Other admins' }] }), () => { throw new Error('Denied'); }, () => ({ invalid: true })]) {
+    const { service, calls } = administration(() => { throw new Error('Assignment data must not be read'); }, undefined, config, membership);
+    assert.equal(await service.isAvailable(), false);
+    for (const operation of [() => service.load(), () => service.openEditor(7), () => service.openEditor(), () => service.saveAssignment(editor, [1]), () => service.saveAssignment({ groupIds: [] }, [1], newAdmin), () => service.searchAdmins('Alex')]) {
+      await assert.rejects(operation, error => error.code === 'denied');
+    }
+    assert.ok(calls.every(url => url.includes('/currentuser/groups')));
+  }
+});
+
+test('blank group configuration disables access and configured names are escaped on the list site', async () => {
+  const disabled = administration(() => metadata(), undefined, { ...config, accessAdminGroupName: '  ' });
+  assert.equal(await disabled.service.isAvailable(), false);
+  assert.equal(disabled.calls.length, 0);
+  const name = "Office's Admins & Owners";
+  const listSite = 'https://example.sharepoint.com/sites/central';
+  const { service, calls } = administration(() => metadata(), undefined, { ...config, listSiteUrl: listSite, accessAdminGroupName: name }, url => {
+    assert.equal(new URL(url).searchParams.get('$filter'), "Title eq 'Office''s Admins & Owners'");
+    return { value: [{ Id: 20, Title: name }] };
+  });
+  assert.equal(await service.isAvailable(), true);
+  assert.ok(calls.every(url => url.startsWith(`${listSite}/_api/`)));
+});
+
+test('removing group membership after opening an editor prevents its save without losing the caller draft', async () => {
+  let member = true;
+  let writes = 0;
+  const { service } = administration(editorReads(), async () => { writes++; return { ok: true }; }, config,
+    () => ({ value: member ? [{ Id: 42, Title: '365AccessManagement-Admins' }] : [] }));
+  const draft = await service.openEditor(7);
+  member = false;
+  await assert.rejects(service.saveAssignment(draft, [2]), error => error.code === 'denied');
+  assert.deepEqual(draft.groupIds, [1]);
+  assert.equal(writes, 0);
+});
+
 function editorReads({ mask = '2054', type = 'LookupMulti', required = false, lookupList = '{groups-id}', selectionGroup = 0, readOnly = false } = {}) {
   return url => {
     if (url.includes('EffectiveBasePermissions')) return metadata(mask);
@@ -127,7 +165,7 @@ test('every save rechecks list management permission, including Add Items for cr
   for (const mask of ['0', '4', '2048']) {
     const { service, calls } = administration(editorReads({ mask }));
     await assert.rejects(service.saveAssignment(editor, [1]), /permissions no longer/);
-    assert.equal(calls.length, 1);
+    assert.ok(calls.every(url => url.includes('/currentuser/groups') || url.includes('EffectiveBasePermissions')));
   }
   const { service } = administration(editorReads({ mask: '2052' }));
   await assert.rejects(service.openEditor(), /permissions no longer allow adding/);
