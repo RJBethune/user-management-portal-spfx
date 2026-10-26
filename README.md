@@ -23,6 +23,20 @@ Commit source, then run `npm run package:dev` and `npm run package:prod`. Each c
 
 [Architecture](ARCHITECTURE.md) · [Delivery](docs/DELIVERY.md) · [Baseline](docs/BASELINE.md) · [Known issues](docs/KNOWN-ISSUES.md).
 
+## Local preview
+
+SPFx Portfolio loads the actual web part through `preview/adapter.json`. Its app-owned `sourceAliases` map `@microsoft/sp-page-context` to the local permission shim; this mapping does not enter SharePoint packages. Restart this app's local preview after changing the adapter or dependencies.
+
+Portfolio fixtures include sample membership groups and Access assignments. You can select an admin, change draft groups, or search for a sample admin to add. Saves display an explicit local-preview message and never contact SharePoint or Graph. Use authenticated SharePoint DEV testing to verify permissions and persisted changes.
+
+With the Portfolio preview running, test its **Open standalone preview** URL:
+
+```sh
+npm run test:portfolio-preview -- http://127.0.0.1:<preview-port>/
+```
+
+This check exercises Portfolio's Vite entry. `npm run test:browser` exercises the separate esbuild harness and its simulated REST saves; it cannot verify Portfolio's import resolution.
+
 ## Membership and authorization
 
 A Microsoft 365 group GUID routes changes through the existing SharePoint request list and Power Automate flow. The web part has read-only Graph scopes. The flow must independently authorize the request's system-created `AuthorId` before writing membership changes.

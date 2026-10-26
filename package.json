@@ -26,7 +26,8 @@
     "theme:compile": "node scripts/compile-theme.cjs",
     "theme:check": "node scripts/compile-theme.cjs --check",
     "preview:build": "node preview/build.cjs",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:portfolio-preview": "node preview/portfolio-check.cjs"
   },
   "dependencies": {
     "@fluentui/react-components": "9.70.0",

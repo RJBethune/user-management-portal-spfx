@@ -6,5 +6,8 @@
   "stringsModule": "AccountManagementWebPartStrings",
   "strings": "src/webparts/accountManagement/loc/en-us.js",
   "fixtureModule": "preview/fixtures.ts",
+  "sourceAliases": {
+    "@microsoft/sp-page-context": "preview/spfx-stubs.ts"
+  },
   "fixtures": ["populated", "empty", "loading", "error"]
 }
