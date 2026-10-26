@@ -1,6 +1,6 @@
 {
   "name": "account-management-spfx",
-  "version": "1.16.1",
+  "version": "1.16.2",
   "private": true,
   "description": "Account Management for Microsoft 365 and SharePoint groups through configured requests and authorized site APIs.",
   "engines": {
@@ -17,7 +17,7 @@
     "start": "heft start --clean",
     "eject-webpack": "heft eject-webpack",
     "check": "npm run theme:check && node scripts/check-delivery.cjs && node scripts/verify-baseline.cjs && eo-spfx audit . && heft test --clean && npm run test:regression",
-    "test:regression": "node --test scripts/regression.test.cjs",
+    "test:regression": "node --test scripts/regression.test.cjs scripts/kit-css.test.cjs",
     "package:dev": "eo-spfx deliver dev",
     "package:prod": "eo-spfx deliver prod",
     "release": "npm run package:prod",
