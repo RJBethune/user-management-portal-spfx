@@ -334,19 +334,30 @@
 
 .recentList {
   display: grid;
-  gap: 6px;
+  gap: 0;
 }
 
 .recentRow {
-  align-items: center;
-  display: flex;
-  gap: 10px;
+  align-items: start;
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  column-gap: 16px;
+  row-gap: 6px;
   min-width: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--spfx-ui-color-border);
 }
-
-
-
-
+.recentRow:last-child { border-bottom: 0; }
+.requestStatus { width: 104px; min-width: 104px; justify-content: center; box-sizing: border-box; }
+.requestDetails { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.requestDetails strong { color: var(--spfx-ui-color-foreground); font-size: 14px; line-height: 1.5; font-weight: 600; }
+.requestDetails > span, .requestTime { color: var(--spfx-ui-color-muted-foreground); font-size: 13px; line-height: 1.5; }
+.requestHistory .recentRow { grid-template-columns: 104px minmax(0, 1fr) 180px; }
+.requestTime { text-align: right; font-variant-numeric: tabular-nums; }
+@container (max-width: 700px) {
+  .requestHistory .recentRow { grid-template-columns: 104px minmax(0, 1fr); }
+  .requestTime { grid-column: 2; text-align: left; }
+}
 
 .membersHeader,
 .selectedUser {

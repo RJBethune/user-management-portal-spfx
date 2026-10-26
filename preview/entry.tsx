@@ -60,7 +60,8 @@ const context = {
         if (scenario === 'requests-error') return { ok: false, status: 403, json: async () => ({}) };
         result = { value: scenario === 'requests' ? [
           { Id: 52, Action: 'Add Member', GroupName: 'Operations team', GroupId: groups[0].GroupId, MemberDisplayName: 'Taylor Chen', Status: 'Completed', ResultMessage: 'Member added.', RequestedOn: '2026-10-26T12:00:00Z' },
-          { Id: 51, Action: 'Remove Member', GroupName: 'Regional coordination', GroupId: groups[1].GroupId, MemberDisplayName: 'Jordan Patel', Status: 'Failed', ResultMessage: 'Workflow denied this change.' }
+          { Id: 51, Action: 'Remove Member', GroupName: 'Regional coordination', GroupId: groups[1].GroupId, MemberDisplayName: 'Jordan Patel', Status: 'Failed', ResultMessage: 'Workflow denied this change.' },
+          { Id: 50, Action: 'Add Member', GroupName: 'Operations team', GroupId: groups[0].GroupId, MemberDisplayName: 'Alex Morgan', Status: 'Pending', ResultMessage: 'Waiting for the membership workflow.', RequestedOn: new Date().toISOString() }
         ] : [] };
       }
       else if (url.includes("getbytitle('Managed Groups')")) result = url.endsWith('?$select=Id') ? { Id: 'managed-groups' } : { value: url.includes('$filter=') ? groups.filter(row => assignments[0].OfficeGroupRecord.some(group => group.Id === row.Id)) : groups };

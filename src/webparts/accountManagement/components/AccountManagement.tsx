@@ -1252,8 +1252,8 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                       .join(' · ');
                                     return (
                                       <div className={styles.recentRow} key={`req-${r.id}`}>
-                                        <StatusBadge status={displayStatus} tones={requestTones} />
-                                        <span className={styles.memberDetails}>
+                                        <StatusBadge className={styles.requestStatus} status={displayStatus} tones={requestTones} />
+                                        <span className={styles.requestDetails}>
                                           <strong>{r.action}: {r.memberDisplayName}</strong>
                                           <span>{detail}</span>
                                         </span>

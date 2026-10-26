@@ -34,12 +34,14 @@ export function RecentRequests(props: IAccountManagementProps & { active: boolea
         const stale = row.status === 'Pending' && !!row.requestedOn && Date.now() - Date.parse(row.requestedOn) > 5 * 60 * 1000;
         const updated = row.modified || row.requestedOn;
         return <li key={row.id} className={styles.recentRow}>
-          <StatusBadge status={stale ? 'Error' : row.status} tones={tones} />
-          <div className={styles.memberDetails}><strong>{row.action}: {row.memberDisplayName}</strong><span>{row.groupName}</span>
+          <StatusBadge className={styles.requestStatus} status={stale ? 'Error' : row.status} tones={tones} />
+          <div className={styles.requestDetails}><strong>{row.action}: {row.memberDisplayName}</strong><span>{row.groupName}</span>
             {row.resultMessage && <span>{row.resultMessage}</span>}
             {stale && <span>No response from the workflow — refresh to confirm.</span>}
-            {updated && !isNaN(Date.parse(updated)) && <time dateTime={updated}>{new Date(updated).toLocaleString()}</time>}
           </div>
+          {updated && !isNaN(Date.parse(updated)) && <time className={styles.requestTime} dateTime={updated}>
+            {new Date(updated).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+          </time>}
         </li>;
       })}
     </ul> : <Notice>You have no recent membership requests.</Notice>}
