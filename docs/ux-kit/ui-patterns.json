@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "name": "@spfx-kit/ui-patterns",
+  "version": "0.8.0-bp.11.1",
+  "filename": "spfx-kit-ui-patterns-0.8.0-bp.11.1.tgz",
+  "sha256": "ae25650f0c71ee161090feec21912518ffdb26e38db250bf9f241312a2e6c3eb",
+  "integrity": "sha512-Ty9wS4EA7IWtfynW1YXpg+DKWg3wtx3bTBM/aOkBiCakWn+h8+sbVW0wGQyJJFb+pbsZgMevN3yPN5j+lZj9aQ==",
+  "size": 164307,
+  "unpacked": {
+    "entryCount": 227,
+    "inventorySha256": "2972f8ce06243b0a2981015188534fd82dcff0be6bb8d0080be83aa16abb0c82"
+  },
+  "source": {
+    "repository": "ux-kit",
+    "path": "packages/ui-patterns",
+    "commit": "9b9a25be56c7796038ef3256802291274b0093ac",
+    "tree": "00db44414a63487e4164f6c6bcd318098ba10436",
+    "dirty": false
+  }
+}

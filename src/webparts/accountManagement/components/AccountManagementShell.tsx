@@ -43,7 +43,7 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
     try { localStorage.setItem(preferenceKey, next); } catch { /* The theme still works when storage is unavailable. */ }
   };
   return <div className={styles.shell}>
-    <AppHeader className={workspace.expanded ? styles.expandedHeader : undefined} role="region" aria-label="Account Management header" brand={{ name: props.description || '365 Account Management', mark: <PeopleTeam20Regular aria-hidden="true" /> }} user={{ name: props.userDisplayName }} actions={<>
+    <AppHeader expanded={workspace.expanded} role="region" aria-label="Account Management header" brand={{ name: props.description || '365 Account Management', mark: <PeopleTeam20Regular aria-hidden="true" /> }} user={{ name: props.userDisplayName }} actions={<>
       <AppHeaderExpandButton expanded={workspace.expanded} onExpandedChange={workspace.toggle} aria-disabled={workspace.pending || undefined} data-workspace-toggle="true" />
       {workspace.expanded && <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Workspace actions" title="Workspace actions" />}><MoreHorizontal20Regular aria-hidden="true" /></DropdownMenuTrigger>
         <DropdownMenuContent id={workspaceMenuId} align="end"><DropdownMenuItem disabled={workspace.pending || workspace.native} onClick={workspace.enterBrowser}>Enter browser full screen</DropdownMenuItem></DropdownMenuContent>
@@ -70,8 +70,10 @@ export function AccountManagementShell(props: IAccountManagementProps & { host: 
       <Button variant={view === 'requests' ? 'secondary' : 'ghost'} aria-current={view === 'requests' ? 'page' : undefined} onClick={() => { setRequestsOpened(true); setView('requests'); }}>Recent requests</Button>
       {canAdminister && <Button variant={view === 'access' ? 'secondary' : 'ghost'} aria-current={view === 'access' ? 'page' : undefined} onClick={() => { setAccessOpened(true); setView('access'); }}>Access assignments</Button>}
     </nav>
-    <div hidden={view !== 'membership'}><AccountManagement {...props} /></div>
-    {requestsOpened && <div hidden={view !== 'requests'}><RecentRequests {...props} active={view === 'requests'} /></div>}
-    {accessOpened && canAdminister && <div hidden={view !== 'access'}><AccessAssignments key={configKey} service={service} /></div>}
+    <div className={styles.workspaceContent}>
+      <div hidden={view !== 'membership'}><AccountManagement {...props} /></div>
+      {requestsOpened && <div hidden={view !== 'requests'}><RecentRequests {...props} active={view === 'requests'} /></div>}
+      {accessOpened && canAdminister && <div hidden={view !== 'access'}><AccessAssignments key={configKey} service={service} /></div>}
+    </div>
   </div>;
 }

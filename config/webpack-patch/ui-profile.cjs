@@ -15,7 +15,7 @@ module.exports = function configureKit(config) {
   }
   configureTheme(configureProfile(config, { cssDelivery: 'inline', styles: ['luma'] }));
 
-  // ui-patterns 0.5.0 has no SPFx adapter. Its React markup uses literal class
+  // ui-patterns has no SPFx adapter. Its React markup uses literal class
   // names, so its owned stylesheet must bypass SPFx's CSS-module name hashing.
   const rules = config.module.rules;
   const cssPath = path.normalize(require.resolve('@spfx-kit/ui-patterns/styles.css'));

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "name": "@spfx-kit/ui-theme",
+  "version": "0.12.0-bp.4.1",
+  "filename": "spfx-kit-ui-theme-0.12.0-bp.4.1.tgz",
+  "sha256": "51e3e9d4842de8203d16d866e081ac63f1e788696ba79fbf6564e24ada346ee2",
+  "integrity": "sha512-DyJTXHgvFuj+ZFca0flehVMyf9o+oOm+/a4orffS5IbfDIim+j31T6ptgC3ipTAyF4tTDOegRq8YLK8F3Rw6VA==",
+  "size": 556892,
+  "unpacked": {
+    "entryCount": 75,
+    "inventorySha256": "0ca763e782fff148b14b7e4b87b8b35aeaebed9e3f7ba377b6aaf5ba06e83f69"
+  },
+  "source": {
+    "repository": "ux-kit",
+    "path": "packages/ui-theme",
+    "commit": "9b9a25be56c7796038ef3256802291274b0093ac",
+    "tree": "3b8632cc917e668d80b38c524841d7723fc45a81",
+    "dirty": false
+  }
+}

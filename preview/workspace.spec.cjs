@@ -11,6 +11,7 @@ test('expansion keeps drafts and owned portals, and Escape restores focus and pa
   await page.getByRole('button', { name: 'Expand workspace' }).click();
   const workspace = page.getByRole('region', { name: 'Expanded Account Management workspace' });
   await expect(workspace).toBeVisible();
+  await expect(workspace).not.toHaveAttribute('data-workspace-animating', 'true');
   const bounds = await workspace.boundingBox();
   expect(bounds.width).toBe(page.viewportSize().width);
   expect(bounds.height).toBe(page.viewportSize().height);
@@ -32,6 +33,127 @@ test('expansion keeps drafts and owned portals, and Escape restores focus and pa
   await page.evaluate(() => window.disposePreview());
   expect(await page.locator('body > [inert], [data-account-expanded]').count()).toBe(0);
   expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+});
+
+test('Better-family expansion animates the same mounted app and reaches every viewport edge', async ({ page }) => {
+  await page.goto('/?scenario=workspace');
+  await page.getByRole('button', { name: 'Expand workspace' }).waitFor();
+  // Observe the interaction from its first frame, without Playwright waiting for an animation to settle.
+  await page.evaluate(() => {
+    const header = document.querySelector('[aria-label="Account Management header"]');
+    window.originalHeader = header;
+    window.springFrames = [];
+    document.querySelector('[data-workspace-toggle]').addEventListener('click', () => {
+      const sample = () => {
+        const frame = document.querySelector('[data-account-expanded]');
+        if (!frame) return;
+        const bounds = frame.getBoundingClientRect();
+        window.springFrames.push({ time: performance.now(), width: bounds.width, top: bounds.top });
+        if (frame.hasAttribute('data-workspace-animating')) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    }, { once: true });
+  });
+  await page.getByRole('button', { name: 'Expand workspace' }).click();
+  const workspace = page.locator('[data-account-expanded]');
+  await expect(workspace).not.toHaveAttribute('data-workspace-animating', 'true');
+  const observations = await page.evaluate(() => ({
+    frames: window.springFrames,
+    sameHeader: window.originalHeader === document.querySelector('[aria-label="Account Management header"]'),
+    header: document.querySelector('[aria-label="Account Management header"]').getBoundingClientRect().toJSON(),
+    topLayer: document.querySelector('[data-account-expanded]').matches(':popover-open')
+  }));
+  expect(observations.frames.length).toBeGreaterThan(3);
+  expect(new Set(observations.frames.map(frame => Math.round(frame.width))).size).toBeGreaterThan(3);
+  expect(observations.frames.at(-1).time - observations.frames[0].time).toBeGreaterThan(300);
+  expect(observations.sameHeader).toBe(true);
+  expect(observations.topLayer).toBe(true);
+  expect(observations.header.x).toBe(0);
+  expect(observations.header.y).toBe(0);
+  expect(observations.header.width).toBe(page.viewportSize().width);
+  await page.getByRole('button', { name: 'Restore workspace' }).click();
+  await expect(workspace).toHaveCount(0);
+  expect(await page.evaluate(() => window.originalHeader === document.querySelector('[aria-label="Account Management header"]'))).toBe(true);
+});
+
+test('reduced motion, viewport changes and long content keep the shared header fixed at the edges', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?scenario=workspace');
+  await page.getByRole('button', { name: 'Expand workspace' }).click();
+  const workspace = page.locator('[data-account-expanded]');
+  await expect(workspace).not.toHaveAttribute('data-workspace-animating');
+  for (const size of [{ width: 1440, height: 400 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    const header = page.getByRole('region', { name: 'Account Management header', exact: true });
+    await expect.poll(async () => (await header.boundingBox()).width).toBe(size.width);
+    const back = page.getByRole('button', { name: 'Back to groups', exact: true });
+    if (await back.isVisible()) await back.click();
+    await page.getByRole('button', { name: 'Print all groups', exact: true }).scrollIntoViewIfNeeded();
+    expect((await header.boundingBox()).y).toBe(0);
+    expect(await workspace.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  }
+  await page.getByRole('button', { name: 'Restore workspace' }).click();
+  await expect(workspace).toHaveCount(0);
+  expect(await page.locator('body > [inert]').count()).toBe(0);
+});
+
+test('reversing a spring and disposing mid-transition leave no expanded layer or inert page', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Expand workspace' }).click();
+  // Keyboard activation is available while the control is moving.
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-account-expanded]')).not.toHaveAttribute('data-workspace-animating');
+  await expect(page.getByRole('button', { name: 'Restore workspace' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => window.disposePreview());
+  expect(await page.locator('[data-account-expanded], body > [inert]').count()).toBe(0);
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+});
+
+test('expanded link is claimed by one instance only', async ({ page }) => {
+  await page.goto('/?adjacent=1&expand=1');
+  await expect(page.locator('[data-account-expanded]')).toHaveCount(1);
+  await expect(page.locator('[data-account-expanded]')).not.toHaveAttribute('data-workspace-animating');
+  await page.getByRole('button', { name: 'Restore workspace' }).click();
+  await expect(page.locator('[data-account-expanded]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Expand workspace' })).toHaveCount(2);
+});
+
+test('preview host receives expansion and only its same-origin restore message is accepted', async ({ page }) => {
+  await page.route('**/workspace-host-test', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html><html><body>
+    <iframe title="Workspace fixture" data-spfx-full-page-preview="true" src="/" style="width:900px;height:650px"></iframe>
+    <script>window.messages=[];addEventListener('message',event=>window.messages.push(event.data));</script></body></html>` }));
+  await page.goto('/workspace-host-test');
+  const app = page.frameLocator('iframe');
+  await app.getByRole('button', { name: 'Expand workspace' }).click();
+  const workspace = app.locator('[data-account-expanded]');
+  await expect(workspace).not.toHaveAttribute('data-workspace-animating');
+  await expect.poll(() => page.evaluate(() => window.messages.some(message => message.type === 'spfx-kit:workspace-expanded' && message.expanded && message.appId === 'account-management-spfx'))).toBe(true);
+  await page.frames()[1].evaluate(() => window.postMessage({ type: 'spfx-kit:workspace-restore' }, location.origin));
+  await expect(workspace).toHaveCount(1);
+  await page.evaluate(() => document.querySelector('iframe').contentWindow.postMessage({ type: 'spfx-kit:workspace-restore' }, location.origin));
+  await expect(workspace).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.messages.some(message => message.type === 'spfx-kit:workspace-expanded' && message.expanded === false))).toBe(true);
+});
+
+test('shared expanded header uses site app-bar colors and removes them for Light and Dark', async ({ page }) => {
+  await page.goto('/?scenario=site-theme&expand=1');
+  const header = page.getByRole('region', { name: 'Account Management header', exact: true });
+  await expect(header).toHaveCSS('background-color', 'rgb(0, 69, 120)');
+  await expect(header).toHaveCSS('color', 'rgb(255, 255, 255)');
+  for (const choice of ['Light', 'Dark', 'SharePoint']) {
+    await page.getByRole('button', { name: 'Choose theme' }).click();
+    await page.getByRole('menuitemradio', { name: choice, exact: true }).click();
+    if (choice === 'SharePoint') await expect(header).toHaveCSS('background-color', 'rgb(0, 69, 120)');
+    else {
+      await expect(header).not.toHaveCSS('background-color', 'rgb(0, 69, 120)');
+      expect(await header.evaluate(node => getComputedStyle(node).getPropertyValue('--spfx-ui-sharepoint-app-bar').trim())).toBe('');
+    }
+  }
+  await page.getByRole('button', { name: 'Restore workspace' }).click();
+  await expect(page.locator('[data-account-expanded]')).toHaveCount(0);
+  await expect(header).not.toHaveCSS('background-color', 'rgb(0, 69, 120)');
 });
 
 test('native fullscreen failure keeps a usable expanded workspace with a restore control', async ({ page }) => {

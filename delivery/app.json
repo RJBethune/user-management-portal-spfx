@@ -23,7 +23,8 @@
     "WORKSPACE-01",
     "WORKSPACE-02",
     "REQUESTS-01",
-    "ACCESS-03"
+    "ACCESS-03",
+    "WORKSPACE-03"
   ],
   "attribution": "M/EX - Executive Office",
   "requirePickerTitle": true

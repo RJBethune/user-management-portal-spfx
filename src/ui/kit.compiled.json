@@ -4,7 +4,7 @@
   "compilerVersion": "0.1.0",
   "compatibility": {
     "profileId": "spfx-react17-base-nova-v1",
-    "profileDigest": "f51b4e36f7ea6fa1b85ccbd3eaa95f3a07efd74e3634e1b180c9df69e4392f4a"
+    "profileDigest": "a1630bc7d9b6e09b53151461af557f51b4d392535cae04a97c9c9e9d8e374977"
   },
   "provenance": {
     "revision": "a56ae0c5f5f71763f5c50910562e8b65c19b61ebac943fd398327e1551fbe60a"
@@ -67,7 +67,7 @@
         "colorDestructive": "oklch(0.577 0.245 27.325)",
         "colorBorder": "oklch(0.92 0.004 286.32)",
         "colorInput": "oklch(0.92 0.004 286.32)",
-        "colorRing": "oklch(0.705 0.015 286.067)",
+        "colorRing": "oklch(0.645 0.015 286.067)",
         "radiusSm": "calc(max(0px, calc(0.625rem - 4px)) * 1.74)",
         "radiusMd": "calc(max(0px, calc(0.625rem - 2px)) * 1.74)",
         "radiusLg": "var(--radius, calc(0.625rem * 1.74))",
@@ -93,7 +93,7 @@
         "--destructive": "oklch(0.577 0.245 27.325)",
         "--border": "oklch(0.92 0.004 286.32)",
         "--input": "oklch(0.92 0.004 286.32)",
-        "--ring": "oklch(0.705 0.015 286.067)",
+        "--ring": "oklch(0.645 0.015 286.067)",
         "--chart-1": "oklch(0.809 0.105 251.813)",
         "--chart-2": "oklch(0.623 0.214 259.815)",
         "--chart-3": "oklch(0.546 0.245 262.881)",
@@ -107,7 +107,7 @@
         "--sidebar-accent": "oklch(0.967 0.001 286.375)",
         "--sidebar-accent-foreground": "oklch(0.21 0.006 285.885)",
         "--sidebar-border": "oklch(0.92 0.004 286.32)",
-        "--sidebar-ring": "oklch(0.705 0.015 286.067)",
+        "--sidebar-ring": "oklch(0.645 0.015 286.067)",
         "--skui-radius-xs": "calc(2px * 1.74)",
         "--skui-radius-2xl": "calc(calc(0.625rem + 8px) * 1.74)",
         "--skui-radius-3xl": "calc(calc(0.625rem + 12px) * 1.74)",

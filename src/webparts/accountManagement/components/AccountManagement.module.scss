@@ -579,37 +579,20 @@
 }
 
 .shell { color: var(--spfx-ui-color-foreground); background: var(--spfx-ui-color-background); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; container-type: inline-size; }
-// The pinned Kit supplies the header and controls. Only the expanded banner's
-// surface roles change; portaled menus retain the normal Kit theme.
-.shell .expandedHeader {
-  background: var(--spfx-ui-color-primary);
-  color: var(--spfx-ui-color-primary-foreground);
-  border-bottom-color: var(--spfx-ui-color-primary);
-
-  :global(button.cn-button-variant-ghost) { color: inherit; }
-  :global(button.cn-button-variant-ghost):is(:hover, :active, [aria-expanded='true'], [data-popup-open]) {
-    background: var(--spfx-ui-color-muted);
-    color: var(--spfx-ui-color-foreground);
-  }
-  :global(button.cn-button-variant-ghost):focus-visible {
-    outline: 2px solid var(--spfx-ui-color-primary-foreground);
-    outline-offset: 2px;
-    box-shadow: none;
-  }
-}
-@media (forced-colors: active) {
-  .shell .expandedHeader {
-    background: Canvas; color: CanvasText; border-bottom-color: CanvasText;
-    :global(button.cn-button-variant-ghost):focus-visible { outline-color: Highlight; }
-  }
-}
+// The shared AppHeader owns all header appearance. Only workspace geometry lives here.
+.workspaceContent { min-width: 0; }
 .expandedFrame {
-  position: fixed; inset: 0; z-index: 2147483000; overflow: auto; overscroll-behavior: contain;
+  position: fixed; inset: 0; z-index: 2147483000; overflow: hidden; overscroll-behavior: contain;
   height: 100vh; height: 100dvh;
-  > :first-child { min-height: 100%; background: var(--spfx-ui-color-background); }
-  .shell { min-height: 100vh; min-height: 100dvh; padding: 16px 24px; box-sizing: border-box; }
-  .accountManagement { max-width: none; }
-  @media (max-width: 520px) { .shell { padding: 8px; } }
+  > :first-child { height: 100%; min-height: 0; background: var(--spfx-ui-color-background); }
+  .shell { height: 100%; min-height: 0; display: flex; flex-direction: column; padding: 0; }
+  .shell > :not(.workspaceContent) { flex-shrink: 0; }
+  .viewNavigation { padding-inline: 16px; }
+  .workspaceContent { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding-inline: 16px; }
+  .workspaceContent > div > * { max-width: none; }
+  @media (max-width: 520px) {
+    .viewNavigation, .workspaceContent { padding-inline: 8px; }
+  }
 }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .requestHistory { list-style: none; margin: 0; padding: 0; }

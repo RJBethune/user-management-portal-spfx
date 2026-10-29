@@ -1,0 +1,26 @@
+{
+  "adoptedDate": "2026-10-29",
+  "sourceApplication": "Better Project 0.52.4",
+  "publishedUpstream": false,
+  "packages": {
+    "@spfx-kit/ui-profile": "0.3.3-bp.4.1",
+    "@spfx-kit/ui-theme": "0.12.0-bp.4.1",
+    "@spfx-kit/ui-patterns": "0.8.0-bp.11.1"
+  },
+  "packageLedger": {
+    "@spfx-kit/ui-profile": {
+      "sha256": "ce7da5df1d9c88f42b94ff8e67496946c01960a105e40e6cc0315cd5f24101cf",
+      "sourceCommit": "971acd0fb09f392a43dfd115d29a139284e862dc"
+    },
+    "@spfx-kit/ui-theme": {
+      "sha256": "51e3e9d4842de8203d16d866e081ac63f1e788696ba79fbf6564e24ada346ee2",
+      "sourceCommit": "9b9a25be56c7796038ef3256802291274b0093ac"
+    },
+    "@spfx-kit/ui-patterns": {
+      "sha256": "ae25650f0c71ee161090feec21912518ffdb26e38db250bf9f241312a2e6c3eb",
+      "sourceCommit": "9b9a25be56c7796038ef3256802291274b0093ac"
+    }
+  },
+  "packageReleaseRevision": "9b9a25be56c7796038ef3256802291274b0093ac",
+  "note": "Byte-identical local Kit archives already adopted by Better Project. No sibling runtime dependency. Expanded AppHeader and top-layer support replace app-owned header appearance."
+}

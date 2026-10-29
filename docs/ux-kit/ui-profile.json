@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "name": "@spfx-kit/ui-profile",
+  "version": "0.3.3-bp.4.1",
+  "filename": "spfx-kit-ui-profile-0.3.3-bp.4.1.tgz",
+  "sha256": "ce7da5df1d9c88f42b94ff8e67496946c01960a105e40e6cc0315cd5f24101cf",
+  "integrity": "sha512-8BlHYEksW4Lozf43/2+7lUougY4RlQowEpVDs5pB8hr++alCXEFuQrZYSXXw/tF45rHbZMZLugEFyDNBHvZO7g==",
+  "size": 2056994,
+  "unpacked": {
+    "entryCount": 3605,
+    "inventorySha256": "711de27d2dde8a579766e43a81311bd12cadc8523b3db9b2cdc349badb8b7cc0"
+  },
+  "profileId": "spfx-react17-base-nova-v1",
+  "profileSha256": "0b50636a9fc7b567afe483a3c0c9c9ab32ccf7c6c169cc74180c1aba13e1d522",
+  "provenanceSha256": "a1630bc7d9b6e09b53151461af557f51b4d392535cae04a97c9c9e9d8e374977",
+  "cssSha256": "0beaf6cdafa55e45e0010280d283e0eeb0246fe01306e63434d396c5fb3ee7b5",
+  "scopeValue": "skui-8b6f249c41f5558f",
+  "source": {
+    "repository": "ux-kit",
+    "path": "packages/ui-profile",
+    "commit": "971acd0fb09f392a43dfd115d29a139284e862dc",
+    "tree": "562f1c872eb84e50d3a87e3814ba2d818e9db866",
+    "dirty": false
+  }
+}
