@@ -1,6 +1,10 @@
 # Baseline and shared UI
 
-Account Management 1.17.0 uses published delivery toolkit **1.5.3**, SPFx **1.23.2**, Heft **1.2.19**, TypeScript **~5.8.0**, React **17.0.1**, and Node **22.23.3**. Both channels retain the original PROD identities and product names. See [package identity and filenames](PACKAGE-IDENTITY.md).
+Account Management 1.18.0 uses published delivery toolkit **1.5.3**, SPFx **1.23.2**, Heft **1.2.19**, TypeScript **~5.8.0**, React **17.0.1**, and Node **22.23.3**. Both channels retain the original PROD identities and product names. See [package identity and filenames](PACKAGE-IDENTITY.md).
+
+Version 1.18.0 improves the existing client workflows without changing services, list schemas, permissions, Graph scopes or write contracts. Access assignments adds a group-first view using the same authorized inventory, filters for missing admins and duplicate grants, and named additions/removals before saving. Drafts remain mounted across Admins and Groups. Recent requests refreshes pending rows every 15 seconds while visible, retains loaded results during reads, and stops on errors or terminal outcomes. Delayed requests keep their actual Pending status in both histories. The shared header, expansion behavior and pinned Kit cohort are unchanged.
+
+Validation for 1.18.0: Node 22.23.3 and a fresh npm ci; npm run check passed all 21 regressions, including the production CSS loader. All 42 distinct browser cases passed across the full suite and the focused seven-case rerun after correcting two test synchronization/selector issues. New coverage verifies named changes, retained duplicate grants, distinct-admin counts, missing-user repair, filters, narrow focus, unchanged conditional-write payloads, retained drafts and refresh lifecycle behavior. The actual Portfolio WebPart preview passed with no runtime errors or external requests. Desktop and 390 px mobile inspection confirmed the new content fits the existing Kit workspace and expanded header. Tenant acceptance remains pending under ACCESS-04 and REQUESTS-02.
 
 The toolkit archive is unchanged: SHA-256 `3390fa4ec29fec6473fd0ff6c2e4ef23bc3f02db35c14558cae328cc6de2582b`. The platform checkout's newer baseline guidance is unreleased; it does not replace this immutable archive. The app adopts its Node 22.23.3 minimum in the engine, local version file and CI.
 

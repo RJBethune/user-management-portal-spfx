@@ -51,6 +51,24 @@
 .people button { width: 100%; justify-content: flex-start; white-space: normal; height: auto; min-height: 44px; text-align: left; overflow-wrap: anywhere; }
 .personResult { display: block; width: 100%; min-width: 0; white-space: normal; text-align: left; overflow-wrap: anywhere; }
 .selectionSummary { font-variant-numeric: tabular-nums; }
+.browseModes { display: flex; gap: 4px; flex-wrap: wrap; }
+.adminView { display: grid; gap: 20px; }
+.adminView[hidden] { display: none; }
+.coverageFilters { display: flex; flex-wrap: wrap; gap: 4px; }
+.groupCoverage { display: grid; gap: 20px; padding: 24px; min-width: 0; overflow-wrap: anywhere; }
+.groupCoverage h3 { font-size: 20px; line-height: 28px; margin: 0 0 8px; }
+.groupCoverage p { margin: 0; }
+.groupCoverage div > .note { margin-top: 8px; }
+.coverageRecords { list-style: none; padding: 0; margin: 0; }
+.coverageRecords li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding-block: 16px; border-bottom: 1px solid var(--spfx-ui-color-border); }
+.coverageRecords li:first-child { padding-top: 0; }
+.coverageRecords li > div { min-width: 0; flex: 1 1 180px; }
+.changeSummary { display: grid; gap: 12px; padding-block: 16px; border-block: 1px solid var(--spfx-ui-color-border); overflow-wrap: anywhere; }
+.changeSummary h4, .changeSummary h5, .changeSummary ul { margin: 0; }
+.changeSummary h4 { font-size: 16px; font-weight: 600; }
+.changeSummary h5 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.changeSummary ul { padding-inline-start: 20px; display: grid; gap: 8px; }
+.retainedGrant { display: block; margin-top: 4px; color: var(--spfx-ui-color-foreground); font-size: 13px; }
 @container (max-width: 800px) {
   .workspace { grid-template-columns: minmax(0, 1fr); }
   .adminPane { border-right: 0; }
@@ -58,6 +76,6 @@
   .backToAdmins { display: block; padding: 12px 12px 0; }
 }
 @container (max-width: 520px) {
-  .editorPane { padding: 16px; }
+  .editorPane, .groupCoverage { padding: 16px; }
   .groupChoices li { padding-inline: 0; }
 }

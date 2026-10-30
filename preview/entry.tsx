@@ -8,6 +8,8 @@ import { DEFAULT_LIST_CONFIG } from '../src/webparts/accountManagement/services/
 import { EXPECTED_LISTS } from '../src/webparts/accountManagement/models/listSchema';
 
 const scenario = new URLSearchParams(location.search).get('scenario');
+const requestStarted = new Date(Date.now() - (scenario === 'requests-delayed' ? 10 * 60 * 1000 : 0)).toISOString();
+(window as any).previewRequestReads = 0;
 const site = 'https://example.sharepoint.com/sites/access';
 const groups = [
   { Id: 1, Title: 'Operations team', GroupId: '12345678-1234-1234-1234-123456789012', IsTeamsConnected: true, Description: 'Membership for the Operations team.', Mail: 'operations@example.test', Visibility: 'Private' },
@@ -19,6 +21,10 @@ const assignments = [
   { Id: 8, User: { Id: 11, Title: 'Sam Rivera', EMail: 'sam.rivera@example.test' }, OfficeGroupRecord: [{ Id: 1 }] },
   { Id: 9, User: { Id: 10, Title: 'Alex Morgan', EMail: 'alex.morgan@example.test' }, OfficeGroupRecord: [] }
 ];
+if (scenario === 'group-review') {
+  assignments[2].OfficeGroupRecord = [{ Id: 1 }];
+  assignments.push({ Id: 10, User: { Id: 0, Title: 'Missing admin', EMail: '' }, OfficeGroupRecord: [{ Id: 3 }] });
+}
 if (scenario === 'workspace') {
   ['Finance and budget', 'Employee onboarding', 'IT service coordination', 'Leadership team'].forEach((title, index) => {
     const Id = index + 4;
@@ -57,11 +63,13 @@ const context = {
       }
       else if (url.includes('/currentuser')) result = { Id: 10, Title: 'Alex Morgan', Email: 'alex@example.test' };
       else if (url.includes("getbytitle('Group Membership Requests')/items")) {
-        if (scenario === 'requests-error') return { ok: false, status: 403, json: async () => ({}) };
-        result = { value: scenario === 'requests' ? [
+        (window as any).previewRequestReads++;
+        if ((window as any).previewHoldRequests) await new Promise<void>(resolve => { (window as any).releasePreviewRequests = resolve; });
+        if (scenario === 'requests-error' || (window as any).previewRequestFailure) return { ok: false, status: 403, json: async () => ({}) };
+        result = { value: scenario === 'requests' || scenario === 'requests-delayed' ? [
           { Id: 52, Action: 'Add Member', GroupName: 'Operations team', GroupId: groups[0].GroupId, MemberDisplayName: 'Taylor Chen', Status: 'Completed', ResultMessage: 'Member added.', RequestedOn: '2026-10-26T12:00:00Z' },
           { Id: 51, Action: 'Remove Member', GroupName: 'Regional coordination', GroupId: groups[1].GroupId, MemberDisplayName: 'Jordan Patel', Status: 'Failed', ResultMessage: 'Workflow denied this change.' },
-          { Id: 50, Action: 'Add Member', GroupName: 'Operations team', GroupId: groups[0].GroupId, MemberDisplayName: 'Alex Morgan', Status: 'Pending', ResultMessage: 'Waiting for the membership workflow.', RequestedOn: new Date().toISOString() }
+          { Id: 50, Action: 'Add Member', GroupName: 'Operations team', GroupId: groups[0].GroupId, MemberDisplayName: 'Alex Morgan', Status: (window as any).previewRequestState || 'Pending', ResultMessage: 'Membership request submitted.', RequestedOn: requestStarted }
         ] : [] };
       }
       else if (url.includes("getbytitle('Managed Groups')")) result = url.endsWith('?$select=Id') ? { Id: 'managed-groups' } : { value: url.includes('$filter=') ? groups.filter(row => assignments[0].OfficeGroupRecord.some(group => group.Id === row.Id)) : groups };
@@ -107,7 +115,7 @@ const context = {
 function mount(instanceId: string, mountPoint: HTMLElement) {
   const host = createSpfxUiHost({ mountPoint, portalParent: document.body, targetDocument: document, instanceId, style: 'luma', theme: initialTokens });
   host.portalHost.style.position = 'relative'; host.portalHost.style.zIndex = '1000';
-  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} sectionTheme={scenario === 'site-theme' ? { palette: { themePrimary: '#0078d4', themeDarker: '#004578', white: '#ffffff', neutralPrimary: '#323130' }, isInverted: false } as any : undefined} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.17.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
+  ReactDOM.render(<SpfxUiHostProvider host={host}><AccountManagementShell host={host} sectionTheme={scenario === 'site-theme' ? { palette: { themePrimary: '#0078d4', themeDarker: '#004578', white: '#ffffff', neutralPrimary: '#323130' }, isInverted: false } as any : undefined} context={context as any} description="365 Account Management" userDisplayName="Alex Morgan" buildVersion="1.18.0" listConfig={DEFAULT_LIST_CONFIG} visibleOffices="" pollTimeoutMs={120000} introText="" helpText="Contact the service desk for membership support." helpUrl="" startCollapsed={scenario === 'start-collapsed'} requireJustification={true} showGroupPhotos={false} isEditMode={false} /></SpfxUiHostProvider>, host.appRoot);
   return () => { ReactDOM.unmountComponentAtNode(host.appRoot); host.dispose(); };
 }
 const dispose = mount('preview-account-management', document.getElementById('app')!);

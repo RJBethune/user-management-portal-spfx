@@ -6,6 +6,7 @@ import { Notice } from '@spfx-kit/ui-patterns/notice';
 import { ArrowLeft20Regular, Person20Regular } from '@fluentui/react-icons';
 import { IAccessOverview, IAssignmentEditor } from '../models/accessAssignments';
 import { AssignmentEditor } from './AssignmentEditor';
+import { AccessGroups } from './AccessGroups';
 import { AccessAdministrationService } from '../services/AccessAdministrationService';
 import { Link, Spinner } from '../../../ui/Controls';
 import { toMessage } from '../shared/errors';
@@ -19,6 +20,7 @@ export function AccessAssignments({ service }: { service: AccessAdministrationSe
   const [data, setData] = React.useState<IAccessOverview>();
   const [error, setError] = React.useState<string>();
   const [query, setQuery] = React.useState('');
+  const [browseBy, setBrowseBy] = React.useState<'admins' | 'groups'>('admins');
   const [revision, setRevision] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [sessions, setSessions] = React.useState<IEditorSession[]>([]);
@@ -45,13 +47,13 @@ export function AccessAssignments({ service }: { service: AccessAdministrationSe
     if (openLock.current || busy) return;
     const key = id === undefined ? 'new' : String(id);
     setSaved(false); setError(undefined);
-    if (sessions.some((session) => session.key === key)) { setSelected(key); setBrowsing(false); setActivation((value) => value + 1); return; }
+    if (sessions.some((session) => session.key === key)) { setBrowseBy('admins'); setSelected(key); setBrowsing(false); setActivation((value) => value + 1); return; }
     openLock.current = true; setOpening(true);
     try {
       const model = await service.openEditor(id);
       if (alive.current) {
         setSessions((current) => [...current, { key, model, dirty: false, busy: false }]);
-        setSelected(key); setBrowsing(false);
+        setBrowseBy('admins'); setSelected(key); setBrowsing(false);
       }
     } catch (reason) { if (alive.current) setError(toMessage(reason, 'The assignment could not be opened.')); }
     // This lock serializes editor reads, so an older response cannot select the wrong admin.
@@ -88,7 +90,7 @@ export function AccessAssignments({ service }: { service: AccessAdministrationSe
     [row.userName, row.userEmail, ...row.groups.map((group) => `${group.title} ${group.groupId}`)].join(' ').toLocaleLowerCase().includes(search));
   return <section className={styles.overview} aria-label="Access assignments">
     <div className={styles.heading}>
-      <div><h2 ref={heading} tabIndex={-1}>Access assignments</h2><p>Select an admin to review and change the groups they can manage.</p></div>
+      <div><h2 ref={heading} tabIndex={-1}>Access assignments</h2><p>Review access by admin or by group. Open an assignment to make changes.</p></div>
       <Button variant="outline" disabled={loading || opening || busy || dirty} title={dirty ? 'Save or discard your drafts before refreshing' : undefined} onClick={() => {
         setSaved(false); setSessions([]); setSelected(undefined); setBrowsing(true); setRevision((value) => value + 1);
       }}>Refresh assignments</Button>
@@ -98,6 +100,13 @@ export function AccessAssignments({ service }: { service: AccessAdministrationSe
     {saved && <Notice tone="success" live="polite">Assignment saved. The affected admin can reload their membership page to use the updated assignments.</Notice>}
     {opening && <Spinner label="Opening assignment…" />}
     {data && <>
+      <div role="group" aria-label="Browse access assignments by" className={styles.browseModes}>
+        <Button variant={browseBy === 'admins' ? 'secondary' : 'ghost'} aria-pressed={browseBy === 'admins'} disabled={opening || busy || loading} onClick={() => setBrowseBy('admins')}>Admins{dirty ? ' · Unsaved changes' : ''}</Button>
+        <Button variant={browseBy === 'groups' ? 'secondary' : 'ghost'} aria-pressed={browseBy === 'groups'} disabled={opening || busy || loading} onClick={() => setBrowseBy('groups')}>Groups</Button>
+      </div>
+      <div hidden={browseBy !== 'groups'}><AccessGroups overview={data} active={browseBy === 'groups'} disabled={opening || busy || loading} hasDrafts={dirty}
+        onOpenAssignment={id => { openEditor(id).catch(() => undefined); }} onBrowseAdmins={() => { setBrowseBy('admins'); setBrowsing(true); setQuery(''); focusList(); }} /></div>
+      <div className={styles.adminView} hidden={browseBy !== 'admins'}>
       <div className={`${styles.workspace} ${browsing || !selected ? styles.showList : styles.showDetails}`}>
         <div className={styles.adminPane}>
           <div className={styles.listToolbar}>
@@ -135,7 +144,7 @@ export function AccessAssignments({ service }: { service: AccessAdministrationSe
           {!selected && <div className={styles.emptyDetail}><h3>Select an admin</h3><p>Review their groups here, or add an admin assignment. Drafts stay available when you switch admins.</p></div>}
           {sessions.map((session) => <div key={session.key} hidden={selected !== session.key} className={styles.editorPane}>
             {session.model.userId && data.duplicateUserIds.indexOf(session.model.userId) !== -1 && <Notice tone="warning">This admin has multiple records. You are editing record {session.model.id}. Access combines groups from every record.</Notice>}
-            <AssignmentEditor initial={session.model} sessionKey={session.key} active={selected === session.key} activation={activation} onStateChange={editorStateChanged}
+            <AssignmentEditor initial={session.model} sessionKey={session.key} active={browseBy === 'admins' && selected === session.key} activation={activation} onStateChange={editorStateChanged} savedAssignments={data.assignments}
               service={service} existingEmails={data.assignments.map((row) => row.userEmail)} onCancel={() => closeEditor(session.key)} onSaved={() => {
                 closeEditor(session.key); setSaved(true); setQuery(''); setRevision((value) => value + 1);
               }} />
@@ -145,6 +154,7 @@ export function AccessAssignments({ service }: { service: AccessAdministrationSe
       <details className={styles.unassigned}><summary><h3>Groups without an assigned admin ({data.unassigned.length})</h3></summary>
         {data.unassigned.length ? <ul>{data.unassigned.map((group) => <li key={group.id}>{group.title}<span className={styles.secondary}>{group.groupId || 'Group ID missing'}</span></li>)}</ul> : <p>Every managed group appears in an assignment record.</p>}
       </details>
+      </div>
       <p className={styles.note}>Assignments enable membership requests for selected groups. Existing SharePoint permissions and Power Automate checks still apply. Assignments do not grant site or Teams channel access.</p>
     </>}
   </section>;

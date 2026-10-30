@@ -4,7 +4,7 @@ import { Button } from '@spfx-kit/ui-profile/button';
 import { Input } from '@spfx-kit/ui-profile/input';
 import { Checkbox } from '@spfx-kit/ui-profile/checkbox';
 import { Notice } from '@spfx-kit/ui-patterns/notice';
-import { IAssignmentEditor } from '../models/accessAssignments';
+import { assignmentChanges, IAccessAssignment, IAssignmentEditor } from '../models/accessAssignments';
 import { IUser } from '../models/types';
 import { AccessAdministrationService, AssignmentSaveError } from '../services/AccessAdministrationService';
 import { toMessage } from '../shared/errors';
@@ -16,6 +16,7 @@ interface IProps {
   initial: IAssignmentEditor;
   service: AccessAdministrationService;
   existingEmails: string[];
+  savedAssignments: IAccessAssignment[];
   sessionKey: string;
   active: boolean;
   activation: number;
@@ -25,7 +26,7 @@ interface IProps {
 }
 const sameIds = (a: number[], b: number[]): boolean => a.length === b.length && a.every((id) => b.indexOf(id) !== -1);
 
-export function AssignmentEditor({ initial, service, existingEmails, sessionKey, active, activation, onStateChange, onCancel, onSaved }: IProps): JSX.Element {
+export function AssignmentEditor({ initial, service, existingEmails, savedAssignments, sessionKey, active, activation, onStateChange, onCancel, onSaved }: IProps): JSX.Element {
   const host = useSpfxUiHost();
   const prefix = useSpfxUiId(`assignment-editor-${sessionKey}`);
   const heading = React.useRef<HTMLHeadingElement>(null);
@@ -98,8 +99,7 @@ export function AssignmentEditor({ initial, service, existingEmails, sessionKey,
   const query = groupQuery.trim().toLocaleLowerCase();
   const available = model.groups.filter((group) => `${group.title} ${group.groupId}`.toLocaleLowerCase().includes(query));
   const missing = groupIds.filter((id) => !model.groups.some((group) => group.id === id));
-  const added = groupIds.filter((id) => model.groupIds.indexOf(id) === -1).length;
-  const removed = model.groupIds.filter((id) => groupIds.indexOf(id) === -1).length;
+  const changes = assignmentChanges(model, groupIds, savedAssignments);
   const duplicate = !!admin && existingEmails.some((email) => email && [admin.mail, admin.userPrincipalName].some((value) => value?.toLowerCase() === email.toLowerCase()));
 
   return <form className={styles.editor} aria-label={creating ? 'Add admin assignment' : 'Edit admin assignment'} onSubmit={(event) => { event.preventDefault(); save().catch(() => undefined); }}>
@@ -139,7 +139,15 @@ export function AssignmentEditor({ initial, service, existingEmails, sessionKey,
         <Button type="button" variant="outline" onClick={() => setGroupIds((ids) => ids.filter((id) => missing.indexOf(id) === -1))}>Remove unavailable groups</Button>
       </Notice>}
     </fieldset>
-    {!creating && <Notice>{added} {added === 1 ? 'group' : 'groups'} added · {removed} {removed === 1 ? 'group' : 'groups'} removed. Other assignment records for this admin remain in effect.</Notice>}
+    <section className={styles.changeSummary} aria-label="Changes to save">
+      <h4>Changes to save</h4>
+      {!changes.added.length && !changes.removed.length && <p>{creating ? 'This assignment has no groups selected.' : 'No group changes yet.'}</p>}
+      {changes.added.length > 0 && <div><h5>Add to this assignment ({changes.added.length})</h5><ul>{changes.added.map(group => <li key={group.id}>{group.title}</li>)}</ul></div>}
+      {changes.removed.length > 0 && <div><h5>Remove from this assignment ({changes.removed.length})</h5><ul>{changes.removed.map(group => <li key={group.id}>{group.title}
+        {group.otherRecordIds.length > 0 && <span className={styles.retainedGrant}>Also assigned in {group.otherRecordIds.length === 1 ? 'record' : 'records'} {group.otherRecordIds.join(', ')}. Removing it here leaves that access in place.</span>}
+      </li>)}</ul></div>}
+      {!creating && changes.removed.length > 0 && <p className={styles.note}>Only this assignment will change. Other saved assignment records remain in effect.</p>}
+    </section>
     <div className={styles.toolbar}>
       <Button type="submit" disabled={saving || blocked || missing.length > 0 || (creating ? !admin : sameIds(groupIds, model.groupIds)) || (model.required && !groupIds.length)}>{saving ? 'Saving…' : 'Save assignment'}</Button>
       <Button type="button" variant="outline" disabled={saving} onClick={() => dirty ? setConfirm('cancel') : onCancel()}>Cancel</Button>

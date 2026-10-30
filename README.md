@@ -1,16 +1,20 @@
 # Account Management
 
-Version 1.17.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
+Version 1.18.0. An independent SPFx app for authorized Microsoft 365 and SharePoint group membership changes.
 
 The app uses the shared UX Kit with SharePoint, Light and Dark themes. Its **Access assignments** view helps trusted list administrators review who manages each group, find duplicate assignments and groups without an admin, and add or edit assignments directly in the app.
 
 **Access assignments** places admins on the left and editable group assignments on the right. Switching admins preserves each record's draft, including a new assignment. Narrow columns use **Back to admins**. The Kit header uses the same icon and theme-menu treatment as Better apps.
+
+Switch to **Groups** to review each group's assigned admins, find groups with no admin, or find duplicate grants. **Edit groups** opens the same assignment editor. Before saving, **Changes to save** names added and removed groups and identifies other records that still grant the removed group. Both views retain drafts and show saved assignment coverage separately.
 
 **Groups you manage** uses an Outlook-style group list and details pane. Search or choose a group on the left; manage its members and owners on the right. Narrow web parts switch between the list and details with **Back to groups**. Changing groups preserves drafts and the selected tab.
 
 The shared header includes **Expand workspace** and **Restore workspace**. Expansion fills the page while retaining drafts, theme menus and confirmation dialogs. Escape closes an open menu or dialog first, then restores the workspace. **Workspace actions → Enter browser full screen** is available after expansion; a host that blocks browser fullscreen still supports page expansion.
 
 **Recent requests** shows the signed-in user's latest 25 membership requests across groups, with outcomes, refresh, loading, empty and error states. Each group's **Recent Requests** tab remains available even when there is no history.
+
+Pending requests refresh every 15 seconds while the main Recent requests view is visible. Refresh stops when there are no pending requests, the view is hidden, or a read fails. Existing results remain visible during refresh; failed reads require a manual retry. A request pending for five minutes gets a delay explanation while keeping its actual workflow status.
 
 ## Build and deliver
 

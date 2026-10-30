@@ -17,7 +17,7 @@ This is an application gate, not a replacement for SharePoint authorization. Use
 1. Open **Access assignments** and search for the admin or group.
 2. Select an admin in the left list, or choose **Add an admin assignment** for a new admin. Their editable groups appear on the right. Narrow columns show one pane at a time with **Back to admins**.
 3. For a new assignment, search by name or email and choose an individual person. Existing records keep their admin identity. Keep one record per admin where possible.
-4. Select the groups this admin can manage, then choose **Save assignment**. Group search retains selections that are hidden by the search. Historical single-value lookup fields allow one selection.
+4. Select the groups this admin can manage. Review the named additions and removals in **Changes to save**, including any other records that retain access, then choose **Save assignment**. Group search retains selections and change details that are hidden by the search. Historical single-value lookup fields allow one selection.
 5. The overview refreshes automatically. The affected admin can reload their membership page to see the updated group list.
 
 To remove access to a group, clear it from **every** assignment record for that admin. Multiple records combine their groups; removing one occurrence may leave another grant. If the lookup field is optional, clearing all groups removes access from that record without deleting it. The overview flags duplicate admin records and shows groups without an assigned admin. Unavailable groups must be explicitly removed before saving. Records with missing users need repair through **Open assignments list**.
@@ -25,6 +25,14 @@ To remove access to a group, clear it from **every** assignment record for that 
 Drafts survive switching admins, views and themes, including a new admin assignment. Each assignment record keeps its own draft; unsaved changes are marked in the admin list. Saving one record preserves drafts for other records. Canceling a changed draft asks before discarding it. Refresh is disabled until drafts are saved or discarded. A concurrent edit or deletion blocks saving until you explicitly reload the assignment. Permission errors keep the draft. If a connection failure leaves the save unconfirmed, close the editor and refresh before retrying; the original save may have succeeded. There are no automatic write retries.
 
 The overview reads all available pages of the two configured lists. Search filters the admin list without hiding the selected editor or discarding its draft. Duplicate records show their record number and a warning in the editor. Expand **Groups without an assigned admin** to review the full loaded inventory, regardless of search. The page's `visibleOffices` setting does not filter this administrative view.
+
+## Review assignments by group
+
+Choose **Groups** beside **Admins** to reverse the view: groups appear on the left and their saved assignment records appear on the right. Search by group name, group ID, admin name or email. **No assigned admin** finds gaps; **Duplicate assignments** finds groups granted to the same admin by more than one record. Counts show distinct admins, not record counts. Records with missing users remain visible for repair but do not count as assigned admins.
+
+Choose **Edit groups** beside a record to open the existing editor in Admins. **Browse admins to assign this group** returns to the admin list; choose an admin and select the group in their editor. The group view does not preselect or save changes. Switching views preserves drafts, and the Groups view explicitly shows saved assignments until a save refreshes the inventory. Narrow columns use **Back to groups** and restore focus to the selected group.
+
+The change summary describes the current record only. If another saved record still grants a group being removed, the summary names that record. The summary uses the last loaded assignment inventory; existing ETag and permission checks still govern the save. Other admins can change records concurrently, so refresh saved assignments when reviewing final access.
 
 ## What the assignment means
 

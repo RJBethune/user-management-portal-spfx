@@ -243,3 +243,30 @@ test('malformed and restricted groups cannot enable membership actions', () => {
   assert.equal(getManageability({ groupId, groupType: 'Microsoft365' }).manageable, true);
   assert.equal(getManageability({ groupId: '42' }).manageable, true);
 });
+
+const requestStatus = load('src/webparts/accountManagement/shared/requestStatus.ts');
+test('elapsed time adds a delay hint only to Pending, never infers a workflow failure', () => {
+  const now = Date.parse('2026-10-30T12:00:00Z');
+  assert.equal(requestStatus.isDelayedRequest('Pending', '2026-10-30T11:55:00Z', now), true);
+  for (const status of ['Completed', 'Failed', 'Error', 'Unknown']) assert.equal(requestStatus.isDelayedRequest(status, '2026-10-30T11:00:00Z', now), false);
+  for (const date of [undefined, 'invalid', '2026-10-30T12:05:00Z', '2026-10-30T11:59:00Z']) assert.equal(requestStatus.isDelayedRequest('Pending', date, now), false);
+});
+
+test('group review counts distinct admins, flags repeated grants and exposes missing-user records without granting coverage', () => {
+  const groups = [{ id: 1, title: 'A' }, { id: 2, title: 'B' }, { id: 3, title: 'C' }];
+  const rows = [{ id: 7, userId: 4, groups: [groups[0], groups[0]] }, { id: 8, userId: 5, groups: [groups[0]] }, { id: 9, userId: 4, groups: [groups[0]] }, { id: 10, groups: [groups[1]] }];
+  const result = accessModels.groupAssignmentCoverage(rows, groups);
+  assert.equal(result[0].adminCount, 2); assert.equal(result[0].assignments.length, 3); assert.equal(result[0].duplicateGrants, true);
+  assert.equal(result[1].adminCount, 0); assert.equal(result[1].assignments.length, 1); assert.equal(result[1].duplicateGrants, false);
+  assert.equal(result[2].adminCount, 0); assert.deepEqual(result[2].assignments, []);
+});
+
+test('named changes identify remaining grants for the same admin only and retain unavailable removals', () => {
+  const groups = [{ id: 1, title: 'Operations' }, { id: 2, title: 'Regional' }];
+  const model = { id: 7, userId: 4, groupIds: [1, 99], groups };
+  const rows = [{ id: 7, userId: 4, groups: [groups[0]] }, { id: 9, userId: 4, groups: [groups[0]] }, { id: 10, userId: 5, groups: [groups[0]] }];
+  const result = accessModels.assignmentChanges(model, [2, 2], rows);
+  assert.deepEqual(result.added, [{ id: 2, title: 'Regional', otherRecordIds: [] }]);
+  assert.deepEqual(result.removed, [{ id: 1, title: 'Operations', otherRecordIds: [9] }, { id: 99, title: 'Unavailable group (record 99)', otherRecordIds: [] }]);
+  assert.deepEqual(accessModels.assignmentChanges({ ...model, id: undefined, userId: undefined, groupIds: [] }, [1], rows).added[0].otherRecordIds, []);
+});

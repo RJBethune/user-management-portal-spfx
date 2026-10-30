@@ -35,6 +35,7 @@ import { IOfficeGroup, IUser, IRequestSummary, ISitePermission, MembershipAction
 import { isSharePointGroup, groupKindLabel } from '../shared/groupType';
 import { getManageability, IManageability } from '../shared/manageability';
 import { friendlyError, isTimeout, requestResultText } from '../shared/errors';
+import { delayedRequestText, isDelayedRequest } from '../shared/requestStatus';
 import { diag } from '../shared/log';
 
 const requestTones = defineStatusTones({ Completed: 'success', Failed: 'danger', Error: 'danger', Pending: 'warning' });
@@ -96,8 +97,7 @@ const SEARCH_RESULT_CAP: number = 25;
 const MEMBER_FILTER_THRESHOLD: number = 5;
 // Cap how many member rows render at once (large groups); the filter box finds anyone beyond this.
 const MEMBER_RENDER_CAP: number = 200;
-// A request still Pending after this long is shown as Error (the workflow failed or stalled).
-const STALE_PENDING_MS: number = 5 * 60 * 1000;
+
 
 function initials(name: string): string {
   return (
@@ -499,7 +499,7 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
       })
       .catch(() => {
         // Timed out or errored mid-poll — re-read the affected list so we stop trusting the optimistic state,
-        // and refresh recent so the (now possibly stale-Pending -> Error) status shows.
+        // and refresh recent without inferring a workflow failure from an elapsed timeout.
         (isOwnerAction(action) ? loadOwners(group) : loadMembers(group)).catch(() => undefined);
         loadRecent().catch(() => undefined);
       });
@@ -1237,22 +1237,17 @@ const AccountManagement: React.FunctionComponent<IAccountManagementProps> = (pro
                                 <div className={styles.recentList}>
                                   {recentForGroup.map((r: IRequestSummary) => {
                                     const edited: string = formatDateTime(r.modified);
-                                    const submittedMs: number = r.requestedOn ? Date.parse(r.requestedOn) : NaN;
-                                    const stalled: boolean =
-                                      r.status === 'Pending' &&
-                                      !isNaN(submittedMs) &&
-                                      Date.now() - submittedMs > STALE_PENDING_MS;
-                                    const displayStatus: string = stalled ? 'Error' : r.status;
+                                    const delayed = isDelayedRequest(r.status, r.requestedOn);
                                     const detail: string = [
                                       r.resultMessage,
-                                      stalled ? 'No response from the workflow — refresh to confirm' : '',
+                                      delayed ? delayedRequestText : '',
                                       edited ? `edited ${edited}` : ''
                                     ]
                                       .filter(Boolean)
                                       .join(' · ');
                                     return (
                                       <div className={styles.recentRow} key={`req-${r.id}`}>
-                                        <StatusBadge className={styles.requestStatus} status={displayStatus} tones={requestTones} />
+                                        <StatusBadge className={styles.requestStatus} status={r.status} tones={requestTones} />
                                         <span className={styles.requestDetails}>
                                           <strong>{r.action}: {r.memberDisplayName}</strong>
                                           <span>{detail}</span>
