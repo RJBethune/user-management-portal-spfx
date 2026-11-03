@@ -1,0 +1,194 @@
+{
+  "title": "365 Account Management",
+  "subtitle": "Office rollout and communications plan",
+  "version": "1.18.0",
+  "office": "M Executive Office (M/EX)",
+  "slides": [
+    {
+      "kind": "overview", "section": "THE PLAN", "title": "A staged rollout with clear ownership",
+      "lede": "Introduce 365 Account Management to the office, prepare the people who manage access, and give staff a clear route for help.",
+      "cards": [
+        {"icon":"i-users","label":"AUDIENCE","title":"Different actions by role","body":"Staff know where to ask. Assigned group admins manage membership. Access administrators maintain admin assignments."},
+        {"icon":"i-list-checks","label":"READINESS","title":"Prove the service first","body":"A small pilot confirms access, real request outcomes, and support handling before the office-wide launch message."},
+        {"icon":"i-megaphone","label":"COMMUNICATIONS","title":"One coordinated message","body":"Communications owns the channels, wording, distribution, and schedule. The product owner verifies app instructions."},
+        {"icon":"i-life-buoy","label":"SUPPORT","title":"A named route for help","body":"Publish the office request route and technical support contact together. Turn recurring questions into short guidance."}
+      ],
+      "notes":"This is a proposed operating plan for the M Executive Office, following the office identity in the supplied Better Task reference. Communications determines all dates and intervals later. Role titles identify responsibilities, not confirmed staffing assignments. Confirm the launch population and names during preparation. The application baseline is 1.18.0. Source: ARCHITECTURE.md; docs/BASELINE.md; docs/ACCESS-ADMINISTRATION.md."
+    },
+    {
+      "kind":"table", "section":"AUDIENCES", "title":"Who needs to know and act", "lede":"The office-wide message introduces the service. Hands-on instruction goes to the people authorized to use each function.",
+      "columns":["Audience","What they need to know","Action","Primary messenger"], "widths":[210,365,370,220],
+      "rows":[
+        ["All staff","Where membership requests go and how to get help.","Use [OFFICE REQUEST ROUTE]. Do not assume the app grants self-service access.","Leadership, supported by Communications"],
+        ["Assigned group admins","How to manage their authorized groups and check request results.","Complete training, confirm group coverage, and bookmark [APP LINK].","Product owner / trainer"],
+        ["Access administrators","How assignments grant management scope and how to review duplicate grants.","Verify assignments and coverage before onboarding group admins.","Product owner / access lead"],
+        ["Office leads / sponsor","What is changing, who owns support, and what makes launch ready.","Confirm local contacts and authorize the office-wide release.","Rollout lead"],
+        ["Support / service owners","How to triage access, request failures, and service interruptions.","Test the support route and maintain the issue and decision log.","Product owner / support lead"]
+      ],
+      "notes":"Group admin and access administrator are distinct functions. Access assignments requires direct membership in the configured SharePoint admin group and the necessary list permissions. Merely assigning a group to someone does not grant site access or access to the assignment editor. Communications should confirm each distribution list and reach staff who do not attend a live briefing. Source: docs/ACCESS-ADMINISTRATION.md; src/webparts/accountManagement/components/AccountManagementShell.tsx."
+    },
+    {
+      "kind":"two", "section":"CORE MESSAGE", "title":"What changes for the office",
+      "lede":"365 Account Management gives authorized admins a workspace for supported Microsoft 365 and SharePoint group membership changes.",
+      "panels":[
+        {"title":"What people will use","items":[["Membership","Assigned admins select a group and manage its supported member or owner actions."],["Recent requests","Admins check their latest membership requests and investigate a result before retrying."],["Access assignments","Authorized access administrators review and maintain which groups each admin can manage."]]},
+        {"title":"What stays in place","items":[["Existing authorization","Assignments, SharePoint permissions, and the configured Microsoft 365 workflows continue to govern access."],["Office approval practices","Keep the current business approval route unless leadership explicitly changes it."],["Other account services","Account creation, password resets, licensing, and private or shared Teams channel permissions remain outside this rollout."]]}
+      ],
+      "notes":"Use this distinction in every announcement. The product name should not imply a complete account lifecycle service. Owners are a supported Microsoft 365 action, not a SharePoint-group owner action. A group being connected to Teams does not inventory private/shared channel permissions. Do not claim an approval workflow, notification, or policy change that the office has not confirmed. Sources: ARCHITECTURE.md; docs/ACCESS-ADMINISTRATION.md; src/webparts/accountManagement/components/AccountManagement.tsx."
+    },
+    {
+      "kind":"screen", "section":"GROUP ADMIN ENABLEMENT", "title":"Membership: select, change, and confirm", "image":"membership.png",
+      "alt":"Account Management 1.18.0 fixture showing the Membership view, group list, Operations team details, and member controls with fictional people.",
+      "steps":[["Open the correct group","Use Membership and select the group you are assigned to manage."],["Check the person and action","Confirm the identity and whether the change affects a member or an owner."],["Review before submitting","Provide a reason when prompted. Read the confirmation before continuing."],["Check the outcome","Check Recent requests, then refresh membership to verify the result."],["Escalate uncertainty","Use [SUPPORT CONTACT] for an error or an unclear result before submitting again."]],
+      "caption":"Membership view. Fictional preview data; available controls depend on the group and your authorization.",
+      "notes":"Trainer demonstration: use an approved pilot group and test account, demonstrate a member addition and removal, review the confirmation, and verify the resulting membership. Demonstrate an owner action only if in scope and approved for the pilot. Avoid changes to production memberships during a general briefing. The local screenshot is an illustrative fixture, not evidence of tenant acceptance. Sources: src/webparts/accountManagement/components/AccountManagement.tsx; preview/entry.tsx."
+    },
+    {
+      "kind":"screen", "section":"ACCESS ADMINISTRATOR ENABLEMENT", "title":"Access assignments: who manages each group", "image":"assignments.png",
+      "alt":"Account Management 1.18.0 fixture showing the Groups view in Access assignments, assigned admins, and the duplicate-assignment warning with fictional records.",
+      "steps":[["Review group coverage","Open Access assignments. Use Groups to review saved assignments and gaps."],["Choose the admin record","Use Edit groups to open that record in the Admins view."],["Review the named changes","Check Changes to save before saving. Other records may retain the same access."],["Verify the saved result","Refresh the saved inventory and have the affected admin reload Membership."],["Keep access scoped","An assignment does not grant site access or permission to edit assignments."]],
+      "caption":"Groups view in Access assignments. Fictional preview data; duplicate records can retain a grant.",
+      "notes":"Access assignments requires direct membership in the configured group, default 365AccessManagement-Admins, plus Manage Lists and Edit Items on the Authorized Admins list. Creating a record also requires Add Items. Page edit mode and site-owner status do not bypass the group check. Removing one record's group does not revoke another record's grant. Check every assignment record when removing management access. The Groups view shows saved assignments; drafts remain separate until saved. The administrative inventory is not filtered by visibleOffices. Keep this technical detail in administrator training, not the all-staff email. Source: docs/ACCESS-ADMINISTRATION.md."
+    },
+    {
+      "kind":"status", "section":"REQUEST EXPECTATIONS", "title":"Submitted does not mean completed", "lede":"Microsoft 365 changes run through the configured background workflow. Staff should hear the same status explanation from every support contact.",
+      "cards":[
+        {"label":"PENDING","title":"Still processing","body":"The request has been submitted. A delay alone does not mean failure. Check Recent requests before trying again.","color":"#0A314D"},
+        {"label":"COMPLETED","title":"Check the result","body":"The request reports completion. Refresh the group membership to confirm the expected result before closing the issue.","color":"#002D74"},
+        {"label":"FAILED / ERROR","title":"Read and escalate","body":"Review the result message. Send the details through the approved support route. Confirm the next action before resubmitting.","color":"#981B1E"}
+      ],
+      "callout":"SharePoint group changes use the signed-in user's permissions directly. Recent requests shows your latest 25 requests, not an office-wide audit report.",
+      "notes":"Recent requests refreshes pending rows every 15 seconds while the view is visible; this is a refresh interval, not a processing-time promise. Read errors stop automatic refresh until a retry. Microsoft 365 authorization and writes occur in the existing Power Automate flows. SharePoint group changes use current-user SharePoint permissions, with a separate audit-record attempt. Do not treat a missing audit entry as proof that a direct change failed. The older User-Guide.html describes typical completion within a minute; this plan deliberately makes no completion-time commitment. Sources: ARCHITECTURE.md; docs/KNOWN-ISSUES.md (REQUESTS-02, ACCOUNT-01); src/webparts/accountManagement/components/RecentRequests.tsx; src/webparts/accountManagement/components/AccountManagement.tsx."
+    },
+    {
+      "kind":"phases", "section":"ROLLOUT PLAN · BEFORE ANNOUNCEMENT", "title":"Preparation, pilot, and enablement", "phaseLabels":["Prepare","Pilot","Equip","Announce","Launch / support","Review"], "active":[0,1,2],
+      "cards":[
+        {"title":"Prepare","body":"Confirm the audience and supported groups. Name the rollout lead, admin contacts, and support lead. Verify the app link and current request route.","gate":"Ready when scope, contacts, and the approval route are confirmed.","owner":"Rollout lead + product owner"},
+        {"title":"Pilot","body":"Use representative admins and approved test accounts. Verify access boundaries, Microsoft 365 outcomes, SharePoint changes, and support handling.","gate":"Ready when the product owner accepts the tenant results and resolves launch blockers.","owner":"Product owner + pilot admins"},
+        {"title":"Equip","body":"Train group admins and access administrators separately. Publish a quick guide, FAQ, and support instructions. Rehearse the first-use demonstration.","gate":"Ready when launch groups have trained admin coverage and support is prepared.","owner":"Product owner + Communications"}
+      ],
+      "notes":"Phases express dependencies, not dates or fixed durations. Communications will set the schedule later. Pilot checks should cover ACCOUNT-01, ACCESS-03/04, REQUESTS-02, GROUPS-01, and applicable UI/workspace acceptance from docs/KNOWN-ISSUES.md. Check permitted and denied actions with representative roles, including revoked access. Do not equate passing local tests with tenant acceptance. If a group type is outside the launch scope, record it and remove it from public claims. Keep the approved existing route available until readiness is confirmed. Sources: docs/KNOWN-ISSUES.md; docs/BASELINE.md."
+    },
+    {
+      "kind":"phases", "section":"ROLLOUT PLAN · OFFICE RELEASE", "title":"Announcement, supported launch, and review", "phaseLabels":["Prepare","Pilot","Equip","Announce","Launch / support","Review"], "active":[3,4,5],
+      "cards":[
+        {"title":"Announce","body":"Leadership explains the change and the staff request route. Communications publishes approved links and instructions across the selected channels.","gate":"Send when the sponsor approves the message and operational readiness is confirmed.","owner":"Communications + sponsor"},
+        {"title":"Launch / support","body":"Group admins confirm access and handle requests. Support logs issues. Communications shares verified corrections to the guidance.","gate":"Continue when users can complete in-scope tasks and support owns open issues.","owner":"Rollout lead + support lead"},
+        {"title":"Review","body":"Review admin coverage, pilot and live outcomes, support themes, and staff understanding. Update the FAQ and hand ownership to the service team.","gate":"Close rollout when the sponsor accepts the results and ongoing ownership.","owner":"Sponsor + product owner"}
+      ],
+      "notes":"The office announcement should not imply that every employee can administer groups. Decide how already-open requests will finish; avoid parallel submissions through old and new routes. Keep the existing process for out-of-scope requests and interruptions, subject to the approved fallback. Communications controls message timing and cadence. There is no schedule embedded in this deck. Proposed plan; operational approval remains with the office."
+    },
+    {
+      "kind":"table", "section":"COMMUNICATION PLAN · PREPARATION", "title":"Messages that prepare the office", "lede":"Communications assigns the dates after the owners confirm these readiness conditions.",
+      "columns":["Send when","Audience","Message and requested action","Channel","Sender / owner"], "widths":[170,175,385,195,240],
+      "rows":[
+        ["Scope is ready for decision","Sponsor and office leads","Agree the launch scope, admin coverage, support route, and approval responsibilities.","Leadership briefing","Rollout lead"],
+        ["Pilot access is verified","Pilot group admins and support","Test the agreed scenarios. Record access problems, request outcomes, and unclear instructions.","Targeted email + working session","Product owner"],
+        ["Training materials are ready","Group admins and access administrators","Attend role-specific training. Confirm access and demonstrate the actions required for your role.","Training invitation + practice session","Product owner; Communications distributes"],
+        ["Readiness and wording are approved","All staff","Explain what changes, who manages membership, the office request route, and where to get help.","Leadership email + office channel","Sponsor; Communications prepares"]
+      ],
+      "notes":"Communications owns distribution lists and the channel schedule. Confirm the audience before sending. Use email for the formal announcement, the existing office collaboration channel for concise reinforcement, and staff meetings for explanation and questions. An intranet landing page should hold the approved links and FAQ. Channel availability and ownership are proposals until confirmed. See the draft copy later in this deck."
+    },
+    {
+      "kind":"table", "section":"COMMUNICATION PLAN · RELEASE AND FOLLOW-UP", "title":"Messages that sustain use and trust", "lede":"Each message has a specific trigger. Avoid sending reminders that add no new action or useful answer.",
+      "columns":["Send when","Audience","Message and requested action","Channel","Sender / owner"], "widths":[170,175,385,195,240],
+      "rows":[
+        ["The service is approved and available","All staff and assigned admins","Confirm availability. Give staff the request route and admins the app link, guide, and support contact.","Leadership email + pinned office post","Sponsor; Communications publishes"],
+        ["Support identifies a recurring question","Affected users or admins","Share one useful answer. Link to the updated FAQ and ask for unresolved examples.","Targeted tip + office channel","Communications + product owner"],
+        ["A verified issue affects service","Affected audience","Explain the impact, safe action, approved fallback, and where the next update will appear.","Service notice + existing support channel","Support lead verifies; Communications publishes"],
+        ["The rollout review is complete","Sponsor, office leads, and staff","Share verified results and changes to guidance. Confirm the ongoing service owner and support route.","Leadership summary + brief staff update","Rollout lead + Communications"]
+      ],
+      "notes":"The support lead confirms the issue and affected audience before a service notice. For a material delay, failure, or access-control issue, notify the product owner and rollout lead through the agreed internal route. The product owner decides whether to pause affected usage; the sponsor decides on office-wide rollout continuation. Communications prepares updates and avoids an unverified restoration estimate. These roles and escalation rules are proposed for office approval."
+    },
+    {
+      "kind":"table", "section":"CONTENT AND APPROVAL", "title":"One owner for every rollout asset", "lede":"Communications coordinates the release. The product owner confirms that every instruction matches the supported service.",
+      "columns":["Asset","Draft owner","Review / approval","Ready when"], "widths":[265,240,300,360],
+      "rows":[
+        ["Office announcement and launch email","Communications","Product owner verifies facts; sponsor approves","Audience, requested action, and all links are confirmed."],
+        ["App landing page and pinned post","Communications / page owner","Product owner + support lead","One current app link, guide, FAQ, and help route are easy to find."],
+        ["Admin quick guide and demonstration","Product owner / trainer","Pilot admins + access lead","Instructions reflect the launch build and the approved group types."],
+        ["FAQ and support guidance","Support lead","Product owner","Access, Pending, failed requests, and fallback questions have answers."],
+        ["Service notices and review summary","Communications","Support lead verifies impact; rollout lead approves","Claims use verified evidence and clearly state the next user action."]
+      ],
+      "notes":"Before distribution, replace [APP LINK], [OFFICE REQUEST ROUTE], [SUPPORT CONTACT], [GUIDE LINK], [TRAINING DETAILS], [STATUS LOCATION], and [APPROVED FALLBACK] wherever used. These placeholders identify content to confirm, not missing dates. Do not publish tenant URLs guessed from configuration. Publish the approved guidance at a stable location and give one owner responsibility for corrections. The existing User-Guide.html uses illustrated screens and older timing language; reconcile it with the launch build before sharing it as the current guide. Sources: docs/User-Guide.html; docs/BASELINE.md."
+    },
+    {
+      "kind":"email", "section":"DRAFT COPY · AWARENESS", "title":"Office announcement", "label":"FROM THE OFFICE SPONSOR · TO ALL STAFF",
+      "subject":"Introducing 365 Account Management",
+      "paragraphs":[
+        "We are preparing to introduce 365 Account Management for supported Microsoft 365 and SharePoint group membership changes in the M Executive Office.",
+        "Assigned group admins will use the application to manage the groups they are authorized to support and check the results of their requests. Our existing access rules and business approval practices continue to apply.",
+        "For staff, the next step is to keep using [OFFICE REQUEST ROUTE] for membership needs. The office will confirm when the service is available and provide the final guidance. Other account services continue through their existing channels.",
+        "Group admins and access administrators will receive separate training instructions. Questions about the rollout can go to [SUPPORT CONTACT]."
+      ],
+      "notes":"Ready-to-adapt awareness email. Communications confirms sender, distribution, and the office request route before use. This draft intentionally contains no launch date or unverified service claim. If leadership changes the business request route, replace the third paragraph with the approved change and explain how already-open requests will be handled. Do not describe general staff as app administrators."
+    },
+    {
+      "kind":"email", "section":"DRAFT COPY · LAUNCH", "title":"Launch email", "label":"FROM THE OFFICE SPONSOR · SEND ONLY AFTER RELEASE APPROVAL",
+      "subject":"365 Account Management is available",
+      "paragraphs":[
+        "365 Account Management is now available for the office's supported Microsoft 365 and SharePoint group membership changes.",
+        "Staff: use [OFFICE REQUEST ROUTE] when you need a membership change. Include the group, the person affected, the requested action, and the business reason through the approved channel.",
+        "Assigned group admins: open [APP LINK], confirm that your groups appear, and bookmark the page. Follow [GUIDE LINK] to manage membership and check Recent requests after submitting a Microsoft 365 change. Pending means the request is still processing.",
+        "Need help? Contact [SUPPORT CONTACT]. Include the group, the action, any request reference shown, and the status or error message. Please check the existing result before sending the same change again."
+      ],
+      "notes":"Ready-to-adapt launch email. Publish only after the product owner confirms tenant acceptance and the sponsor approves release. Keep the two audience actions separate when formatting the email. Replace every bracketed field and test the links as an intended recipient. Share only the necessary request details through an approved support channel; broad office posts should not include member lists or personal information. Do not promise instant access or automatic email notifications."
+    },
+    {
+      "kind":"training", "section":"DRAFT COPY · ENABLEMENT", "title":"Admin training invitation and practice",
+      "subject":"365 Account Management: training for assigned admins",
+      "invitation":"You have been identified for a group admin or access administrator role. Join the session at [TRAINING DETAILS]. Before the session, open [APP LINK] and report any missing groups or access problem to [SUPPORT CONTACT]. Bring the list of groups you are expected to support. The session uses approved test accounts and covers only the functions authorized for your role.",
+      "columns":[
+        {"title":"Group admin practice","items":["Select the right group and person.","Review a member change and its confirmation.","Check Pending, Completed, and failure outcomes.","Find the help route and explain when to escalate."]},
+        {"title":"Access administrator practice","items":["Review group coverage and assignment records.","Edit one assignment and review named changes.","Explain how duplicate records can retain access.","Verify the saved result and the affected admin's view."]}
+      ],
+      "notes":"Communications sends the invitation to a verified roster. The product owner prepares separate demonstrations for each role. Use approved test accounts and groups rather than real staff changes for practice. Readiness evidence is a completed task and a correct explanation of the support route, not attendance alone. Source: docs/ACCESS-ADMINISTRATION.md; src/webparts/accountManagement/components/AccountManagement.tsx."
+    },
+    {
+      "kind":"two", "section":"DRAFT COPY · REINFORCEMENT", "title":"Staff briefing and a useful follow-up",
+      "panels":[
+        {"title":"Staff meeting talking points","items":[["Why the office is introducing it","“365 Account Management gives our assigned admins a place to manage supported group membership changes and check request results.”"],["What staff should do","“Use [OFFICE REQUEST ROUTE] for a change. Your admin will handle the application steps.”"],["Where to find help","“Use [SUPPORT CONTACT] for a problem. Current guidance is at [GUIDE LINK].”"]]},
+        {"title":"Short office-channel post","items":[["Suggested post","“Group admins: after a Microsoft 365 change, check Recent requests. Pending means it is still processing. Check the result before submitting again.”"],["One clear next action","“If the result is unclear, contact [SUPPORT CONTACT] with the group and request details.”"],["Supporting link","“Current guidance: [GUIDE LINK].”"]]}
+      ],
+      "notes":"Communications can use the talking points for an office meeting or adapt them to a short intranet post. Use the reinforcement post when support sees duplicate submissions or confusion about Pending. Avoid a routine broadcast with no new information. Invite questions through the approved channel and feed the answers into the FAQ."
+    },
+    {
+      "kind":"faq", "section":"QUESTIONS AND SUPPORT", "title":"Answers the office should hear consistently",
+      "items":[
+        ["Can everyone manage groups?","No. Assigned admins manage their authorized groups. Staff use [OFFICE REQUEST ROUTE]."],
+        ["Why can’t I see the group I need?","Ask [SUPPORT CONTACT] to check your assignment, the page scope, and the required access."],
+        ["Does an assignment give me site access?","No. Site access and the permissions required for each action still apply."],
+        ["What does Pending mean?","The request is still processing. A delay alone does not mean it failed. Check the existing result."],
+        ["Can this handle every Teams permission?","No. Private and shared channel permissions are outside this rollout."],
+        ["What should I send to support?","The group, action, request reference if shown, status, and error text through the approved support route."]
+      ],
+      "notes":"Support triage: the office admin contact handles business intent and which group is needed. The access lead checks assigned scope. Technical support investigates loading errors, request failures, or unclear results and involves the workflow owner as needed. The product owner confirms service boundaries. Use anonymized examples for office-wide messages; keep membership and personal details in the approved support channel. Sources: docs/ACCESS-ADMINISTRATION.md; docs/KNOWN-ISSUES.md; src/webparts/accountManagement/components/RecentRequests.tsx."
+    },
+    {
+      "kind":"incident", "section":"EXCEPTION COMMUNICATIONS", "title":"A verified issue needs a clear next action",
+      "steps":[["Verify the impact","Support confirms the affected function, audience, and safe action with the product owner."],["Decide whether to pause","The product owner pauses affected use when needed. The rollout lead escalates the release decision to the sponsor."],["Publish and correct","Communications sends the approved notice and updates the guidance when facts change."]],
+      "subject":"365 Account Management: service update",
+      "copy":"We are investigating [VERIFIED ISSUE] affecting [AFFECTED FUNCTION / AUDIENCE]. Please [SAFE USER ACTION]. For urgent needs, use [APPROVED FALLBACK]. If you already submitted a request, check its result or contact [SUPPORT CONTACT] before submitting again. We will publish the next verified update at [STATUS LOCATION].",
+      "notes":"Use this draft only after support verifies an issue. The approved fallback must preserve the office's existing authorization and business approval practices; it must not bypass access controls. Confirm who can authorize a pause and who releases a restoration message during preparation. A restoration message should state the verified recovery and any action users must take. Do not invent an estimated recovery time. These are proposed communications responsibilities, not a change to application permissions or workflows."
+    },
+    {
+      "kind":"table", "section":"ADOPTION AND REVIEW", "title":"Evidence that the rollout is working", "lede":"Agree the targets and review cadence before launch. Report observed results; this plan assumes no built-in adoption dashboard.",
+      "columns":["Question","Evidence to collect","Owner","Action if the result is weak"], "widths":[275,405,180,305],
+      "rows":[
+        ["Can each launch group get help?","Launch group roster with a named, trained admin and a confirmed support contact.","Rollout lead","Fill coverage gaps before expanding the launch."],
+        ["Can admins complete the work?","Pilot scenarios and approved live examples with the request result and membership confirmed.","Product owner","Resolve workflow or permission issues and retest."],
+        ["Do staff know what to do?","Brief feedback: where would you request a change, and where would you get help?","Communications","Clarify the office message and repeat the useful action."],
+        ["Is support becoming routine?","Issue log grouped by access, Pending, failure, duplicate submission, and guidance questions.","Support lead","Correct instructions or escalate recurring defects."],
+        ["Is ongoing ownership clear?","Named service owner, guidance owner, support route, and disposition of open issues.","Sponsor","Keep rollout oversight until handoff is accepted."]
+      ],
+      "notes":"Track named-admin coverage and demonstrated completion against the confirmed launch roster. Set targets with the sponsor; no percentages here are asserted as agreed. Collect aggregate support themes and avoid publishing personal membership data. The app's Recent requests view is current-user history limited to 25 rows and cannot establish office-wide adoption or a full audit. The support/workflow owner may use an authorized operational source for broader request evidence. Sources: src/webparts/accountManagement/components/RecentRequests.tsx; docs/ACCESS-ADMINISTRATION.md."
+    },
+    {
+      "kind":"closing", "section":"DECISIONS BEFORE RELEASE", "title":"The handoff to Communications",
+      "items":["Confirm the launch audience and supported groups.","Name the sponsor, rollout lead, admin contacts, and support lead.","Confirm the staff request route and treatment of open requests.","Accept the tenant pilot results and admin readiness.","Approve the app link, guidance, FAQ, and message copy.","Agree the fallback route and ongoing service ownership."],
+      "boxTitle":"Communications owns the schedule",
+      "boxBody":"Set the dates, channels, and reminder cadence after readiness and approval are confirmed.\n\nThis plan uses phases and decision points. It contains no launch dates or fixed intervals.",
+      "notes":"The deliverable is a proposed communications and rollout plan. Confirm the office identity and role owners before use. Communications determines the dates later, as requested. Replace the bracketed links and contacts in the draft copy before sending. Technical acceptance remains an operational decision; this presentation does not deploy the app or change permissions, flows, or existing request records. Sources: user direction; ARCHITECTURE.md; docs/KNOWN-ISSUES.md."
+    }
+  ]
+}
