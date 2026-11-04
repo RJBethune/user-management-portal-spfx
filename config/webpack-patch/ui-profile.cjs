@@ -1,37 +1,26 @@
 'use strict';
 const path = require('node:path');
 const configureProfile = require('@spfx-kit/ui-profile/spfx-webpack');
-const configureTheme = require('@spfx-kit/ui-theme/spfx-webpack.cjs');
-const patternsRuleMarker = Symbol.for('account-management.ui-patterns.global-css-rule');
+const configured = Symbol.for('account-management.ui-kit.subset-configured');
 module.exports = function configureKit(config) {
-  // The released Kit adapter matches the SPFx loader by its POSIX package path.
+  if (config[configured]) return config;
   for (const rule of config.module?.rules || []) {
     for (const entry of Array.isArray(rule?.use) ? rule.use : [rule?.use]) {
       if (entry && typeof entry === 'object' && typeof entry.loader === 'string' &&
-          /(?:^|[\\/])@microsoft[\\/]sp-css-loader(?:[\\/]|$)/.test(entry.loader)) {
-        entry.loader = entry.loader.replace(/\\/g, '/');
-      }
+          /(?:^|[\\/])@microsoft[\\/]sp-css-loader(?:[\\/]|$)/.test(entry.loader)) entry.loader = entry.loader.replace(/\\/g, '/');
     }
   }
-  configureTheme(configureProfile(config, { cssDelivery: 'inline', styles: ['luma'] }));
-
-  // ui-patterns has no SPFx adapter. Its React markup uses literal class
-  // names, so its owned stylesheet must bypass SPFx's CSS-module name hashing.
-  const rules = config.module.rules;
-  const cssPath = path.normalize(require.resolve('@spfx-kit/ui-patterns/styles.css'));
-  if (rules.some(rule => rule?.[patternsRuleMarker] === cssPath)) return config;
-  const usesSpCssLoader = (rule, modules) => (Array.isArray(rule?.use) ? rule.use : [rule?.use]).some(entry =>
-    entry && typeof entry === 'object' && /(?:^|[\\/])@microsoft[\\/]sp-css-loader(?:[\\/]|$)/.test(entry.loader || '') &&
-    Boolean(entry.options?.generateCssClassName) === modules);
-  const moduleRule = rules.find(rule => usesSpCssLoader(rule, true));
-  const globalRule = rules.find(rule => usesSpCssLoader(rule, false));
-  if (!moduleRule || !globalRule) throw Error('Could not find the SPFx module and global CSS rules for UI Kit patterns.');
+  // Retain the pinned React 17 compatibility aliases and Luma runtime contract.
+  configureProfile(config, { cssDelivery: 'inline', styles: ['luma'] });
+  // Our verified component subset replaces the adapter's full Luma delivery asset.
+  const marker = Symbol.for('spfx-kit.ui-profile.delivery-assets-plugin');
+  if (!config.plugins.some(plugin => plugin?.[marker])) throw Error('Kit delivery adapter changed; review the component subset integration.');
+  config.plugins = config.plugins.filter(plugin => !plugin?.[marker]);
+  const cssPath = path.normalize(path.resolve(__dirname, '../../lib/ui/kit.styles.css'));
   const matches = resource => path.normalize(String(resource || '').split('?', 1)[0]) === cssPath;
-  const exclude = rule => { rule.exclude = rule.exclude ? [rule.exclude, matches] : matches; };
-  exclude(moduleRule);
-  exclude(globalRule);
-  rules.splice(rules.indexOf(globalRule) + 1, 0, {
-    ...globalRule, test: matches, include: undefined, exclude: undefined, [patternsRuleMarker]: cssPath
-  });
+  for (const rule of config.module.rules) rule.exclude = rule.exclude ? [rule.exclude, matches] : matches;
+  // Preserve literal React classes and the Kit's own host scope.
+  config.module.rules.push({ test: matches, use: [{ loader: path.join(__dirname, 'account-css-loader.cjs') }] });
+  Object.defineProperty(config, configured, { value: true });
   return config;
 };

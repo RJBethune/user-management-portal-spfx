@@ -14,7 +14,7 @@ import { ThemeProvider, ThemeChangedEventArgs, IReadonlyTheme } from '@microsoft
 import { createSpfxUiHost, SpfxUiHost, SpfxUiHostProvider } from '@spfx-kit/ui-profile';
 import { MessageBar, MessageBarBody } from '../../ui/Controls';
 import { initialTokens } from '../../ui/theme';
-import '../../ui/styles';
+import { ensureStyles } from '../../ui/styles';
 
 import * as strings from 'AccountManagementWebPartStrings';
 import { AccountManagementShell } from './components/AccountManagementShell';
@@ -85,6 +85,7 @@ export default class AccountManagementWebPart extends BaseClientSideWebPart<IAcc
   private _unhandledRejectionHandler: ((e: PromiseRejectionEvent) => void) | undefined;
 
   protected onInit(): Promise<void> {
+    ensureStyles(this.domElement.ownerDocument);
     const themeProvider: ThemeProvider = this.context.serviceScope.consume(ThemeProvider.serviceKey);
     this._themeProvider = themeProvider;
     this._theme = themeProvider.tryGetTheme();

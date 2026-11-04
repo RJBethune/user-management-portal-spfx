@@ -130,6 +130,9 @@ test('refresh preserves visible rows, never overlaps, and stops on hidden or ina
   await page.getByRole('button', { name: 'Access assignments', exact: true }).click();
   await expect(region).not.toBeVisible();
   await expect(page.getByRole('heading', { name: 'Access assignments', exact: true })).toBeVisible();
+  // Visibility confirms the React commit. Let passive-effect cleanup finish before
+  // the fake clock jumps past the old view's next refresh deadline.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.clock.runFor(45000);
   expect(await reads(page)).toBe(before + 2);
 });

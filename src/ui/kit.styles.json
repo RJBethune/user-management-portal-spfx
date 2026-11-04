@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "style": "luma",
+  "cssSha256": "836cd6a372e9d129e741377963fb7b9f6cdc38fda37d3e380b2d98e8f330e9ea",
+  "cssBytes": 166869,
+  "imports": [
+    "export { AppHeader as kit0, AppHeaderExpandButton as kit1 } from \"@spfx-kit/ui-patterns/app-header\";",
+    "export { elevateWorkspace as kit2 } from \"@spfx-kit/ui-patterns/layout-stability\";",
+    "export { Notice as kit3 } from \"@spfx-kit/ui-patterns/notice\";",
+    "export { StatusBadge as kit4, defineStatusTones as kit5 } from \"@spfx-kit/ui-patterns/status-badge\";",
+    "export { SpfxUiHostProvider as kit6, createSpfxUiHost as kit7, useSpfxUiHost as kit8, useSpfxUiId as kit9 } from \"@spfx-kit/ui-profile\";",
+    "export { Button as kit10 } from \"@spfx-kit/ui-profile/button\";",
+    "export { Checkbox as kit11 } from \"@spfx-kit/ui-profile/checkbox\";",
+    "export { DropdownMenu as kit12, DropdownMenuContent as kit13, DropdownMenuItem as kit14, DropdownMenuRadioGroup as kit15, DropdownMenuRadioItem as kit16, DropdownMenuTrigger as kit17 } from \"@spfx-kit/ui-profile/dropdown-menu\";",
+    "export { Field as kit18, FieldLabel as kit19 } from \"@spfx-kit/ui-profile/field\";",
+    "export { Input as kit20 } from \"@spfx-kit/ui-profile/input\";",
+    "export { Spinner as kit21 } from \"@spfx-kit/ui-profile/spinner\";",
+    "export { Switch as kit22 } from \"@spfx-kit/ui-profile/switch\";",
+    "export { Tabs as kit23, TabsContent as kit24, TabsList as kit25, TabsTrigger as kit26 } from \"@spfx-kit/ui-profile/tabs\";",
+    "export { Textarea as kit27 } from \"@spfx-kit/ui-profile/textarea\";",
+    "export { applyCompiledThemeArtifact as kit28, applySharePointSvelteLayer as kit29, parseCompiledThemeArtifact as kit30, resolveSharePointSiteTheme as kit31, sharePointSvelteLayer as kit32 } from \"@spfx-kit/ui-theme/runtime\";"
+  ],
+  "sources": {
+    "profile": {
+      "sha256": "9c2aa7812e57c8adbc32179414919479d2d9ea7899a9326d29c9911dd47ffe4a",
+      "originalBytes": 540617,
+      "selectedBytes": 136283
+    },
+    "theme": {
+      "sha256": "acf25f6cbaba4cda8bdcef4ec704b8fe114900e1f778e14c44316ff4cc080c77",
+      "originalBytes": 18004,
+      "selectedBytes": 6780
+    },
+    "patterns": {
+      "sha256": "3ed1b705d5ae0077a82d42322f685a872e27f6eaa2835468b173aaabf0f9ff9d",
+      "originalBytes": 167766,
+      "selectedBytes": 21187
+    }
+  },
+  "fonts": [
+    "inter-vietnamese-opsz-normal.woff2",
+    "inter-latin-ext-opsz-normal.woff2",
+    "inter-latin-opsz-normal.woff2",
+    "inter-latin-opsz-italic.woff2"
+  ]
+}

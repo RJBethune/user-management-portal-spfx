@@ -1,6 +1,6 @@
 {
   "name": "account-management-spfx",
-  "version": "1.18.0",
+  "version": "1.18.1",
   "private": true,
   "description": "Account Management for Microsoft 365 and SharePoint groups through configured requests and authorized site APIs.",
   "engines": {
@@ -16,7 +16,7 @@
     "ship": "npm run package:dev",
     "start": "heft start --clean",
     "eject-webpack": "heft eject-webpack",
-    "check": "npm run theme:check && node scripts/check-delivery.cjs && node scripts/verify-baseline.cjs && eo-spfx audit . && heft test --clean && npm run test:regression",
+    "check": "npm run theme:check && npm run styles:check && node scripts/check-delivery.cjs && node scripts/verify-baseline.cjs && eo-spfx audit . && heft test --clean && npm run test:regression",
     "test:regression": "node --test scripts/regression.test.cjs scripts/kit-css.test.cjs",
     "package:dev": "eo-spfx deliver dev",
     "package:prod": "eo-spfx deliver prod",
@@ -25,6 +25,8 @@
     "releases:open": "node scripts/open-releases.cjs",
     "theme:compile": "node scripts/compile-theme.cjs",
     "theme:check": "node scripts/compile-theme.cjs --check",
+    "styles:compile": "node scripts/subset-kit-styles.cjs",
+    "styles:check": "node scripts/subset-kit-styles.cjs --check",
     "preview:build": "node preview/build.cjs",
     "test:browser": "playwright test",
     "test:portfolio-preview": "node preview/portfolio-check.cjs"
